@@ -68,14 +68,21 @@ class CWPA_API {
 
     private function get_system_prompt( $type ) {
         $fix_ids = implode( ', ', [
-            'clear_expired_transients',
-            'delete_post_revisions',
-            'delete_spam_comments',
-            'delete_trashed_posts',
-            'disable_file_editor',
-            'enable_debug_log',
-            'disable_debug_display',
+            // DB
+            'clear_expired_transients', 'delete_post_revisions', 'delete_spam_comments', 'delete_trashed_posts',
+            // Security / wp-config
+            'disable_file_editor', 'enable_debug_log', 'disable_debug_display',
+            // SEO
             'create_robots_txt',
+            // Server
+            'enable_gzip', 'enable_browser_cache',
+            // Cache
+            'enable_page_cache', 'clear_page_cache',
+            // Frontend
+            'disable_emojis', 'disable_embeds', 'heartbeat_control', 'defer_js',
+            'enable_lazy_load', 'enable_html_minify', 'remove_query_strings', 'enable_dns_prefetch',
+            // WebP
+            'enable_webp_serving', 'enable_webp_auto', 'convert_all_webp',
         ] );
 
         $base = "Tu es un expert WordPress senior. Tu analyses des données techniques d'un site WordPress et tu fournis des diagnostics précis en français. "
