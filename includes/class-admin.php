@@ -414,8 +414,8 @@ class CWPA_Admin {
         check_ajax_referer( 'cwpa_nonce', 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
 
-        if ( ! CWPA_SSH::has_ssh2() ) {
-            wp_send_json_error( 'Extension PHP ssh2 non disponible sur ce serveur. Demandez à votre hébergeur de l\'activer, ou installez-la via : apt install php-ssh2' );
+        if ( ! CWPA_SSH::is_available() ) {
+            wp_send_json_error( 'Driver SSH introuvable. Vérifiez que le dossier vendor/ est présent dans le plugin (réinstallez depuis le ZIP v1.4.1+).' );
         }
 
         $ssh    = new CWPA_SSH();
