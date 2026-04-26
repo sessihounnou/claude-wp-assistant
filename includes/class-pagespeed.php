@@ -29,7 +29,7 @@ class CWPA_PageSpeed {
     public function analyze( $url, $strategy = 'mobile' ) {
         $categories = [ 'performance', 'accessibility', 'best-practices', 'seo' ];
         $query = add_query_arg( [
-            'url'      => urlencode( $url ),
+            'url'      => $url,
             'strategy' => $strategy,
         ], $this->endpoint );
 
