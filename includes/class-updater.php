@@ -31,7 +31,7 @@ class CWPA_Updater {
 
         add_filter( 'pre_set_site_transient_update_plugins', [ $this, 'check_update' ] );
         add_filter( 'plugins_api',                           [ $this, 'plugin_info' ], 10, 3 );
-        add_filter( 'upgrader_post_install',                 [ $this, 'after_install' ], 10, 3 );
+        add_filter( 'upgrader_source_selection',             [ $this, 'fix_source_dir' ], 10, 4 );
         add_action( 'wp_ajax_cwpa_force_update_check',       [ $this, 'ajax_force_check' ] );
         add_action( 'admin_notices',                         [ $this, 'update_notice' ] );
     }
@@ -103,10 +103,14 @@ class CWPA_Updater {
         ];
     }
 
-    // ── Corrige le répertoire après installation ──────────────────────────────
-    public function after_install( $response, $hook_extra, $result ) {
+    // ── Corrige le nom du dossier extrait si c'est un zipball GitHub ─────────
+    // Utilisé AVANT que WordPress déplace les fichiers — aucun risque de suppression.
+    // Avec notre ZIP custom (claude-wp-assistant/ à la racine) le dossier est déjà
+    // correct et WordPress ne fait rien. Avec le zipball GitHub (owner-repo-hash/),
+    // on renomme le dossier source avant que WordPress le déplace.
+    public function fix_source_dir( $source, $remote_source, $upgrader, $hook_extra ) {
         if ( ! isset( $hook_extra['plugin'] ) || $hook_extra['plugin'] !== $this->plugin_file ) {
-            return $response;
+            return $source;
         }
 
         if ( ! function_exists( 'WP_Filesystem' ) ) {
@@ -117,28 +121,19 @@ class CWPA_Updater {
             WP_Filesystem();
         }
 
-        $dest   = trailingslashit( WP_PLUGIN_DIR . '/' . $this->slug );
-        $source = trailingslashit( $result['destination'] ?? '' );
+        $correct = trailingslashit( $remote_source ) . $this->slug . '/';
 
-        // Ne renommer QUE si WordPress a mis les fichiers dans le mauvais dossier.
-        // Avec notre ZIP (qui contient claude-wp-assistant/ à la racine), WordPress
-        // place directement les fichiers dans le bon dossier — source === dest.
-        // Avec le zipball GitHub (owner-repo-hash/), source !== dest → on renomme.
-        if ( $source && $source !== $dest ) {
-            if ( $wp_filesystem->exists( $dest ) ) {
-                $wp_filesystem->delete( $dest, true );
-            }
-            $wp_filesystem->move( rtrim( $source, '/' ), rtrim( $dest, '/' ) );
+        // Dossier source déjà au bon nom → rien à faire
+        if ( trailingslashit( $source ) === $correct ) {
+            return $source;
         }
 
-        $result['destination'] = rtrim( $dest, '/' );
-
-        // Ré-active uniquement si le plugin était déjà actif avant la mise à jour
-        if ( is_plugin_active( $this->plugin_file ) ) {
-            activate_plugin( $this->plugin_file );
+        // Renomme le dossier extrait (ex: owner-repo-hash → claude-wp-assistant)
+        if ( $wp_filesystem->move( rtrim( $source, '/' ), rtrim( $correct, '/' ) ) ) {
+            return $correct;
         }
 
-        return $result;
+        return $source;
     }
 
     // ── Notice admin quand une màj est disponible ─────────────────────────────
