@@ -59,7 +59,7 @@ class CWPA_Admin {
             'pagespeed_key'  => get_option( 'cwpa_pagespeed_key', '' ),
             'version'        => CWPA_VERSION,
             'ssh_configured' => CWPA_SSH::is_configured(),
-            'ssh2_available' => CWPA_SSH::has_ssh2(),
+            'ssh_available'  => CWPA_SSH::is_available(),
             'lcp_enabled'    => (bool) get_option( 'cwpa_lcp_enabled' ),
             'lcp_manual_url' => get_option( 'cwpa_lcp_manual_url', '' ),
             'preconnect_domains' => implode( "\n", (array) get_option( 'cwpa_preconnect_domains', [] ) ),

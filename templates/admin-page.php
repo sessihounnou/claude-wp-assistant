@@ -126,8 +126,12 @@ $claude_key = get_option('cwpa_api_key','');
             <strong>Connectez Claude WP Assistant à votre serveur via SSH</strong> pour aller plus loin que le .htaccess :
             modifier la config Nginx, vider l'OPcache, recharger les services, lire les logs d'erreur en temps réel.
           </div>
-          <?php if (!CWPA_SSH::has_ssh2()): ?>
-          <div class="cwpa-ssh-warn">⚠ Extension PHP <code>ssh2</code> non disponible. Installez-la : <code>apt install php-ssh2 && service php-fpm restart</code></div>
+          <?php if (CWPA_SSH::has_phpseclib()): ?>
+          <div class="cwpa-ssh-driver-ok">✓ Driver SSH : <strong>phpseclib</strong> (pur PHP — aucune extension requise)</div>
+          <?php elseif (CWPA_SSH::has_native_ssh2()): ?>
+          <div class="cwpa-ssh-driver-ok">✓ Driver SSH : <strong>extension php-ssh2</strong></div>
+          <?php else: ?>
+          <div class="cwpa-ssh-warn">⚠ Driver SSH introuvable. Le dossier <code>vendor/</code> est absent du plugin — réinstallez depuis le ZIP.</div>
           <?php endif; ?>
         </div>
 

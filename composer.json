@@ -1,0 +1,9 @@
+{
+    "name": "biristools/claude-wp-assistant",
+    "require": {
+        "phpseclib/phpseclib": "~3.0"
+    },
+    "config": {
+        "vendor-dir": "vendor"
+    }
+}
