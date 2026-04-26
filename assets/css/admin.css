@@ -84,6 +84,12 @@
 .cwpa-btn-ghost:hover { border-color:var(--cwpa-accent); color:var(--cwpa-accent); }
 .cwpa-btn-sm { font-size:11px; padding:5px 12px; }
 
+/* ── Error / loading states ──────────────────────────────── */
+.cwpa-ajax-error { padding:16px 20px; background:rgba(255,77,109,.08); border:1px solid rgba(255,77,109,.25); border-radius:var(--cwpa-radius); color:var(--cwpa-critical); font-size:13px; }
+.cwpa-loading-inline { display:flex; align-items:center; gap:10px; color:var(--cwpa-text2); font-size:13px; padding:8px 0; }
+.cwpa-spinner-sm { width:16px; height:16px; border:2px solid var(--cwpa-border); border-top-color:var(--cwpa-accent); border-radius:50%; animation:cwpa-spin .7s linear infinite; flex-shrink:0; }
+.cwpa-locked-msg { color:var(--cwpa-text2); font-size:13px; padding:10px 14px; background:var(--cwpa-surface2); border-radius:8px; margin-bottom:16px; }
+
 /* ── Results ─────────────────────────────────────────────── */
 .cwpa-results-header { background:var(--cwpa-surface); border:1px solid var(--cwpa-border); border-radius:var(--cwpa-radius) var(--cwpa-radius) 0 0; padding:20px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
 .cwpa-score { display:flex; align-items:center; gap:12px; }

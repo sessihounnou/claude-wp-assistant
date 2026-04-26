@@ -200,9 +200,16 @@
     showLoading(true, 'Analyse PageSpeed en cours (peut prendre 30s)...');
     $.post(CWPA.ajax_url, { action:'cwpa_pagespeed', nonce:CWPA.nonce, url:url, strategy:strategy }, function(res){
       showLoading(false);
-      if (!res.success) { alert('Erreur PageSpeed: '+res.data); return; }
+      if (!res.success) {
+        $('#cwpa-pagespeed-results').html('<div class="cwpa-ajax-error">⚠ Erreur PageSpeed : ' + escHtml(res.data) + '</div>').show();
+        return;
+      }
       renderPageSpeed(res.data);
-    }).fail(function(){ showLoading(false); alert('Erreur réseau.'); });
+    }).fail(function(xhr){
+      showLoading(false);
+      var msg = xhr.status === 0 ? 'Serveur injoignable' : 'HTTP ' + xhr.status;
+      $('#cwpa-pagespeed-results').html('<div class="cwpa-ajax-error">⚠ Erreur réseau : ' + msg + '</div>').show();
+    });
   });
 
   function renderPageSpeed(d){
@@ -290,8 +297,16 @@
 
   function loadOptimizerStatus(){
     $.post(CWPA.ajax_url, { action:'cwpa_optimizer_status', nonce:CWPA.nonce }, function(res){
-      if (!res.success) return;
+      if (!res.success) {
+        $('#cwpa-optim-grid').html('<div class="cwpa-ajax-error">⚠ Erreur chargement : ' + escHtml(res.data || 'réponse inattendue') + '</div>');
+        return;
+      }
       renderOptimizer(res.data.status, res.data.cache);
+    }).fail(function(xhr){
+      var msg = xhr.status === 400 ? 'Nonce invalide (rechargez la page)' :
+                xhr.status === 0   ? 'Serveur injoignable' :
+                'HTTP ' + xhr.status;
+      $('#cwpa-optim-grid').html('<div class="cwpa-ajax-error">⚠ Erreur AJAX : ' + msg + '</div>');
     });
   }
 
@@ -359,8 +374,14 @@
   // ══════════════════════════════════════════════════════════
   function loadWebPStats(){
     $.post(CWPA.ajax_url, { action:'cwpa_webp_stats', nonce:CWPA.nonce }, function(res){
-      if (!res.success) return;
+      if (!res.success) {
+        $('#cwpa-webp-panel').html('<div class="cwpa-ajax-error">⚠ Erreur chargement WebP : ' + escHtml(res.data || 'réponse inattendue') + '</div>');
+        return;
+      }
       renderWebP(res.data);
+    }).fail(function(xhr){
+      var msg = xhr.status === 0 ? 'Serveur injoignable' : 'HTTP ' + xhr.status;
+      $('#cwpa-webp-panel').html('<div class="cwpa-ajax-error">⚠ Erreur AJAX WebP : ' + msg + '</div>');
     });
   }
 
@@ -506,11 +527,9 @@
   function escAttr(str){ return escHtml(str); }
 
   // ══════════════════════════════════════════════════════════
-  // INIT
+  // INIT — optimizer + WebP sont indépendants de l'API Claude
   // ══════════════════════════════════════════════════════════
-  if (CWPA.api_set) {
-    loadOptimizerStatus();
-    loadWebPStats();
-  }
+  loadOptimizerStatus();
+  loadWebPStats();
 
 })(jQuery);
