@@ -404,69 +404,105 @@
   }
 
   function renderWebP(s){
-    var driverBadge = s.driver
-      ? '<span class="cwpa-badge cwpa-badge-ok">● '+escHtml(s.driver.toUpperCase())+' disponible</span>'
-      : '<span class="cwpa-badge cwpa-badge-warn">● Aucun driver WebP (GD/Imagick requis)</span>';
+    var pct = s.percent || 0;
+    var r   = 56; // SVG circle radius
+    var circ = 2 * Math.PI * r;
+    var dash = circ - (pct / 100) * circ;
 
-    var pct  = s.percent || 0;
-    var html = '<div class="cwpa-webp-header">';
-    html += '<div class="cwpa-webp-stats">';
-    html += '<div class="cwpa-webp-stat"><span class="cwpa-webp-num">'+s.converted+'</span><span>Converties</span></div>';
-    html += '<div class="cwpa-webp-stat"><span class="cwpa-webp-num">'+s.pending+'</span><span>En attente</span></div>';
-    html += '<div class="cwpa-webp-stat"><span class="cwpa-webp-num">'+s.saved_kb+' KB</span><span>Économisés</span></div>';
-    html += '<div class="cwpa-webp-stat"><span class="cwpa-webp-num">'+pct+'%</span><span>Progression</span></div>';
-    html += '</div>';
-    html += '<div class="cwpa-webp-right">'+driverBadge;
-    if (s.driver && s.pending > 0) {
-      html += '<button class="cwpa-btn cwpa-btn-primary" id="cwpa-webp-convert">Convertir '+s.pending+' images en WebP</button>';
-    } else if (s.pending === 0 && s.total > 0) {
-      html += '<span style="color:var(--cwpa-ok)">✓ Toutes les images sont converties</span>';
-    }
-    html += '</div></div>';
-
-    // Progress bar
-    html += '<div class="cwpa-webp-progress-wrap"><div class="cwpa-webp-progress-bar" style="width:'+pct+'%"></div></div>';
-    html += '<div class="cwpa-webp-progress-text" id="cwpa-webp-log"></div>';
+    var html = '';
 
     if (!s.driver) {
-      html += '<p class="cwpa-webp-note">Pour activer la conversion WebP, activez l\'extension <strong>GD</strong> (avec imagewebp) ou <strong>Imagick</strong> sur votre serveur.</p>';
+      html += '<div class="cwpa-webp-no-driver">';
+      html += '<strong>Aucun driver WebP disponible.</strong><br>';
+      html += 'Pour activer la conversion, demandez à votre hébergeur d\'activer <strong>GD</strong> (avec imagewebp) ou <strong>Imagick</strong> sur votre serveur PHP.';
+      html += '</div>';
+      $('#cwpa-webp-panel').html(html);
+      return;
     }
+
+    // SVG ring
+    var ringHtml  = '<svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">';
+    ringHtml += '<defs><linearGradient id="webpGrad" x1="0%" y1="0%" x2="100%" y2="0%">';
+    ringHtml += '<stop offset="0%" style="stop-color:var(--cwpa-accent)"/>';
+    ringHtml += '<stop offset="100%" style="stop-color:var(--cwpa-ok)"/>';
+    ringHtml += '</linearGradient></defs>';
+    ringHtml += '<circle class="cwpa-webp-ring-bg" cx="70" cy="70" r="'+r+'"/>';
+    ringHtml += '<circle class="cwpa-webp-ring-fill" cx="70" cy="70" r="'+r+'" ';
+    ringHtml += 'stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+dash.toFixed(1)+'"/>';
+    ringHtml += '</svg>';
+
+    var savedLabel = s.saved_kb >= 1024
+      ? (s.saved_kb / 1024).toFixed(1) + ' MB'
+      : s.saved_kb + ' KB';
+
+    html += '<div class="cwpa-webp-body">';
+
+    // Ring
+    html += '<div class="cwpa-webp-ring-wrap">';
+    html += ringHtml;
+    html += '<div class="cwpa-webp-ring-label">';
+    html += '<span class="cwpa-webp-ring-pct">'+pct+'%</span>';
+    html += '<span class="cwpa-webp-ring-sub">WebP</span>';
+    html += '</div></div>';
+
+    // Info
+    html += '<div class="cwpa-webp-info">';
+    html += '<div class="cwpa-webp-title">'+s.total+' images</div>';
+    html += '<div class="cwpa-webp-subtitle">Bibliothèque médias WordPress · Driver : '+escHtml(s.driver.toUpperCase())+'</div>';
+
+    html += '<div class="cwpa-webp-counters">';
+    html += '<div class="cwpa-webp-counter"><span class="cwpa-webp-counter-num ok">'+s.converted+'</span><span class="cwpa-webp-counter-label">Converties</span></div>';
+    html += '<div class="cwpa-webp-counter"><span class="cwpa-webp-counter-num warn">'+s.pending+'</span><span class="cwpa-webp-counter-label">En attente</span></div>';
+    html += '<div class="cwpa-webp-counter"><span class="cwpa-webp-counter-num saved">'+savedLabel+'</span><span class="cwpa-webp-counter-label">Économisés</span></div>';
+    html += '</div>';
+
+    html += '<div class="cwpa-webp-cta">';
+    if (s.pending > 0) {
+      html += '<button class="cwpa-btn cwpa-btn-primary" id="cwpa-webp-btn">⚡ Démarrer la compression ('+s.pending+' images)</button>';
+    } else if (s.total > 0) {
+      html += '<div class="cwpa-webp-done"><span class="cwpa-webp-done-icon">✓</span> Toutes les images sont déjà converties en WebP !</div>';
+    } else {
+      html += '<div style="color:var(--cwpa-text2);font-size:13px;">Aucune image JPEG/PNG/GIF trouvée dans la bibliothèque.</div>';
+    }
+    html += '</div>';
+    html += '</div>'; // .cwpa-webp-info
+
+    html += '</div>'; // .cwpa-webp-body
+
+    // Progress bar (hidden, shown during conversion)
+    html += '<div class="cwpa-webp-progress" id="cwpa-webp-progress">';
+    html += '<div class="cwpa-webp-progress-track"><div class="cwpa-webp-progress-bar" id="cwpa-webp-bar"></div></div>';
+    html += '<div class="cwpa-webp-progress-log" id="cwpa-webp-log"></div>';
+    html += '</div>';
 
     $('#cwpa-webp-panel').html(html);
   }
 
-  $(document).on('click', '#cwpa-webp-convert', function(){
-    $(this).prop('disabled', true).text('Conversion en cours...');
-    startWebPConversion();
-  });
-
-  function startWebPConversion(){
+  $(document).on('click', '#cwpa-webp-btn', function(){
+    $(this).prop('disabled', true).text('Compression en cours...');
+    $('#cwpa-webp-progress').show();
     processBatch(0);
-  }
+  });
 
   function processBatch(offset){
     $.post(CWPA.ajax_url, { action:'cwpa_webp_convert', nonce:CWPA.nonce, offset:offset }, function(res){
       if (!res.success) {
-        $('#cwpa-webp-log').text('Erreur: '+(res.data||'inconnue'));
+        $('#cwpa-webp-log').text('Erreur : '+(res.data||'inconnue'));
         return;
       }
-      var d = res.data;
+      var d     = res.data;
       var done  = d.done_so_far || offset;
       var total = d.total || 1;
-      var pct   = Math.min(100, Math.round((done/total)*100));
+      var pct   = Math.min(100, Math.round((done / total) * 100));
 
-      $('.cwpa-webp-progress-bar').css('width', pct+'%');
-      $('#cwpa-webp-log').text('Converti '+d.converted+' · Ignoré '+d.skipped+' · '+done+'/'+total+' traités ('+pct+'%)');
-
-      if (d.errors && d.errors.length) {
-        $('#cwpa-webp-log').append(' · Erreurs: '+d.errors.join(', '));
-      }
+      $('#cwpa-webp-bar').css('width', pct+'%');
+      $('#cwpa-webp-log').text(done+' / '+total+' traitées — '+pct+'%'+(d.errors && d.errors.length ? ' · Erreurs : '+d.errors.join(', ') : ''));
 
       if (d.has_more) {
         setTimeout(function(){ processBatch(d.next_offset); }, 200);
       } else {
-        $('#cwpa-webp-log').prepend('✓ Terminé — ');
-        setTimeout(function(){ loadWebPStats(); loadOptimizerStatus(); }, 500);
+        $('#cwpa-webp-log').text('✓ Terminé — '+done+' images traitées.');
+        setTimeout(function(){ loadWebPStats(); }, 800);
       }
     }).fail(function(){
       $('#cwpa-webp-log').text('Erreur réseau lors de la conversion.');
