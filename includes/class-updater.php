@@ -109,7 +109,6 @@ class CWPA_Updater {
             return $response;
         }
 
-        // Ensure WP_Filesystem is ready
         if ( ! function_exists( 'WP_Filesystem' ) ) {
             require_once ABSPATH . 'wp-admin/includes/file.php';
         }
@@ -118,18 +117,23 @@ class CWPA_Updater {
             WP_Filesystem();
         }
 
-        $dest = WP_PLUGIN_DIR . '/' . $this->slug;
+        $dest   = trailingslashit( WP_PLUGIN_DIR . '/' . $this->slug );
+        $source = trailingslashit( $result['destination'] ?? '' );
 
-        // GitHub zipball extracts to a folder named owner-repo-hash — rename it
-        if ( ! empty( $result['destination'] ) && $result['destination'] !== $dest ) {
+        // Ne renommer QUE si WordPress a mis les fichiers dans le mauvais dossier.
+        // Avec notre ZIP (qui contient claude-wp-assistant/ à la racine), WordPress
+        // place directement les fichiers dans le bon dossier — source === dest.
+        // Avec le zipball GitHub (owner-repo-hash/), source !== dest → on renomme.
+        if ( $source && $source !== $dest ) {
             if ( $wp_filesystem->exists( $dest ) ) {
                 $wp_filesystem->delete( $dest, true );
             }
-            $wp_filesystem->move( $result['destination'], $dest );
+            $wp_filesystem->move( rtrim( $source, '/' ), rtrim( $dest, '/' ) );
         }
 
-        $result['destination'] = $dest;
+        $result['destination'] = rtrim( $dest, '/' );
 
+        // Ré-active uniquement si le plugin était déjà actif avant la mise à jour
         if ( is_plugin_active( $this->plugin_file ) ) {
             activate_plugin( $this->plugin_file );
         }
