@@ -76,7 +76,7 @@ $claude_key = get_option('cwpa_api_key','');
             <strong>Précharge l'image principale de chaque page</strong> — ajoute <code>fetchpriority="high"</code> et <code>&lt;link rel="preload"&gt;</code> dans le <code>&lt;head&gt;</code>, active <code>&lt;link rel="preconnect"&gt;</code> vers les domaines tiers, et exclut la première image du lazy-load.
           </div>
           <label class="cwpa-toggle cwpa-lcp-toggle">
-            <input type="checkbox" id="cwpa-lcp-toggle" class="cwpa-toggle-input" <?php echo get_option('cwpa_lcp_enabled') ? 'checked' : ''; ?>>
+            <input type="checkbox" id="cwpa-lcp-toggle" class="cwpa-lcp-input" <?php echo get_option('cwpa_lcp_enabled') ? 'checked' : ''; ?>>
             <span class="cwpa-toggle-slider"></span>
           </label>
         </div>

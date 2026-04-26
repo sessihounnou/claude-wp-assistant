@@ -5,13 +5,15 @@ class CWPA_Optimizer {
 
     // ── Plugins d'optimisation connus — évite les doubles traitements ────────
     private static $conflict_map = [
-        'gzip'                 => [ 'wp-rocket/wp-rocket.php', 'litespeed-cache/litespeed-cache.php', 'w3-total-cache/w3-total-cache.php', 'wp-super-cache/wp-cache.php' ],
-        'browser_cache'        => [ 'wp-rocket/wp-rocket.php', 'litespeed-cache/litespeed-cache.php', 'w3-total-cache/w3-total-cache.php' ],
-        'defer_js'             => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php', 'flying-scripts/flying-scripts.php' ],
-        'lazy_load'            => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php', 'a3-lazy-load/a3-lazy-load.php', 'lazy-loader/lazy-loader.php' ],
-        'html_minify'          => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php', 'fast-velocity-minify/fast-velocity-minify.php' ],
-        'remove_query_strings' => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php' ],
-        'page_cache'           => [ 'wp-rocket/wp-rocket.php', 'litespeed-cache/litespeed-cache.php', 'w3-total-cache/w3-total-cache.php', 'wp-super-cache/wp-cache.php', 'comet-cache/comet-cache.php' ],
+        'gzip'                    => [ 'wp-rocket/wp-rocket.php', 'litespeed-cache/litespeed-cache.php', 'w3-total-cache/w3-total-cache.php', 'wp-super-cache/wp-cache.php' ],
+        'browser_cache'           => [ 'wp-rocket/wp-rocket.php', 'litespeed-cache/litespeed-cache.php', 'w3-total-cache/w3-total-cache.php' ],
+        'defer_js'                => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php', 'flying-scripts/flying-scripts.php' ],
+        'lazy_load'               => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php', 'a3-lazy-load/a3-lazy-load.php', 'lazy-loader/lazy-loader.php' ],
+        'html_minify'             => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php', 'fast-velocity-minify/fast-velocity-minify.php' ],
+        'remove_query_strings'    => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php' ],
+        'page_cache'              => [ 'wp-rocket/wp-rocket.php', 'litespeed-cache/litespeed-cache.php', 'w3-total-cache/w3-total-cache.php', 'wp-super-cache/wp-cache.php', 'comet-cache/comet-cache.php' ],
+        'disable_jquery_migrate'  => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php' ],
+        'font_display_swap'       => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php' ],
     ];
 
     public static function has_conflict( $feature ) {
@@ -56,6 +58,25 @@ class CWPA_Optimizer {
         }
         if ( get_option( 'cwpa_dns_prefetch' ) ) {
             add_action( 'wp_head', [ __CLASS__, 'output_dns_prefetch' ], 1 );
+        }
+
+        // ── 4G / mobile optimizations ────────────────────────────────────────
+        if ( get_option( 'cwpa_font_display_swap' ) && ! self::has_conflict( 'font_display_swap' ) ) {
+            add_filter( 'style_loader_src', [ __CLASS__, 'add_font_display_swap' ], 10, 2 );
+            add_action( 'wp_head', [ __CLASS__, 'inject_font_display_css' ], 50 );
+        }
+        if ( get_option( 'cwpa_remove_wp_bloat' ) ) {
+            self::setup_remove_wp_bloat();
+        }
+        if ( get_option( 'cwpa_disable_jquery_migrate' ) && ! self::has_conflict( 'disable_jquery_migrate' ) ) {
+            add_action( 'wp_default_scripts', [ __CLASS__, 'disable_jquery_migrate' ] );
+        }
+        if ( get_option( 'cwpa_preload_key_assets' ) ) {
+            add_action( 'wp_head', [ __CLASS__, 'output_preload_key_assets' ], 2 );
+        }
+        if ( get_option( 'cwpa_save_data' ) ) {
+            add_action( 'wp_head', [ __CLASS__, 'handle_save_data_meta' ], 1 );
+            add_filter( 'the_content', [ __CLASS__, 'save_data_images' ] );
         }
 
         // ── Fallbacks PHP quand .htaccess n'est pas accessible ──────────────
@@ -197,9 +218,99 @@ class CWPA_Optimizer {
         }
     }
 
+    // ── Font-display: swap ───────────────────────────────────────────────────
+    // Append display=swap to Google Fonts stylesheet URLs
+    public static function add_font_display_swap( $src, $handle ) {
+        if ( strpos( $src, 'fonts.googleapis.com' ) !== false ) {
+            if ( strpos( $src, 'display=' ) === false ) {
+                $src = add_query_arg( 'display', 'swap', $src );
+            }
+        }
+        return $src;
+    }
+
+    // Inject font-display: swap for self-hosted fonts (catch-all via CSS)
+    public static function inject_font_display_css() {
+        if ( is_admin() ) return;
+        echo '<style id="cwpa-font-display">@font-face{font-display:swap}</style>' . "\n";
+    }
+
+    // ── Remove WordPress head bloat ──────────────────────────────────────────
+    // Removes ~5 KB of rarely-needed meta tags and links from the <head>
+    private static function setup_remove_wp_bloat() {
+        remove_action( 'wp_head', 'wp_generator' );
+        remove_action( 'wp_head', 'rsd_link' );
+        remove_action( 'wp_head', 'wlwmanifest_link' );
+        remove_action( 'wp_head', 'adjacent_posts_rel_link_wp_head', 10 );
+        remove_action( 'wp_head', 'wp_shortlink_wp_head', 10 );
+        remove_action( 'wp_head', 'rest_output_link_wp_head', 10 );
+        remove_action( 'wp_head', 'wp_oembed_add_discovery_links' );
+        remove_action( 'template_redirect', 'rest_output_link_header', 11 );
+        // Suppress WordPress version from scripts/styles query args
+        add_filter( 'the_generator', '__return_empty_string' );
+    }
+
+    // ── Disable jQuery Migrate ───────────────────────────────────────────────
+    // jquery-migrate adds ~10 KB gzipped and is only needed for plugins using WP <3.5 APIs
+    public static function disable_jquery_migrate( $scripts ) {
+        if ( ! is_admin() && isset( $scripts->registered['jquery'] ) ) {
+            $jquery = $scripts->registered['jquery'];
+            // Remove jquery-migrate from jquery's deps
+            if ( $jquery->deps ) {
+                $jquery->deps = array_diff( $jquery->deps, [ 'jquery-migrate' ] );
+            }
+        }
+    }
+
+    // ── Preload key assets ───────────────────────────────────────────────────
+    // Preloads the main theme stylesheet and the first woff2 font found in uploads
+    public static function output_preload_key_assets() {
+        if ( is_admin() ) return;
+
+        // Preload main theme CSS
+        $theme_css = get_stylesheet_uri();
+        if ( $theme_css ) {
+            echo '<link rel="preload" href="' . esc_url( $theme_css ) . '" as="style">' . "\n";
+        }
+
+        // Preload custom font if configured
+        $font_url = get_option( 'cwpa_preload_font_url', '' );
+        if ( $font_url ) {
+            echo '<link rel="preload" href="' . esc_url( $font_url ) . '" as="font" type="font/woff2" crossorigin="anonymous">' . "\n";
+        }
+    }
+
+    // ── Save-Data header support ─────────────────────────────────────────────
+    // Adds a body class + meta tag so themes/JS can detect slow connections
+    public static function handle_save_data_meta() {
+        if ( is_admin() ) return;
+        // Inject hint for JS/CSS to reduce payload
+        echo '<meta name="save-data" content="' . ( self::is_save_data() ? '1' : '0' ) . '">' . "\n";
+        if ( self::is_save_data() ) {
+            // Dequeue non-essential scripts on Save-Data connections
+            add_action( 'wp_enqueue_scripts', function() {
+                wp_dequeue_script( 'wp-embed' );
+                wp_dequeue_style( 'wp-block-library' );
+            }, 99 );
+        }
+    }
+
+    // Reduce image quality attribute hint in content for Save-Data connections
+    public static function save_data_images( $content ) {
+        if ( is_admin() || ! self::is_save_data() ) return $content;
+        // Add decoding="async" to all images to hint async decoding on slow CPUs
+        return preg_replace_callback( '/<img(?![^>]*decoding=)([^>]*)>/i', function( $m ) {
+            return '<img decoding="async"' . $m[1] . '>';
+        }, $content );
+    }
+
+    private static function is_save_data() {
+        return ! empty( $_SERVER['HTTP_SAVE_DATA'] ) && strtolower( $_SERVER['HTTP_SAVE_DATA'] ) === 'on';
+    }
+
     // ── Status ───────────────────────────────────────────────────────────────
     public static function get_status() {
-        $features_with_conflict = [ 'gzip', 'browser_cache', 'defer_js', 'lazy_load', 'html_minify', 'remove_query_strings', 'page_cache' ];
+        $features_with_conflict = [ 'gzip', 'browser_cache', 'defer_js', 'lazy_load', 'html_minify', 'remove_query_strings', 'page_cache', 'disable_jquery_migrate', 'font_display_swap' ];
         $conflicts = [];
         foreach ( $features_with_conflict as $f ) {
             $name = self::get_conflict_name( $f );
@@ -211,23 +322,29 @@ class CWPA_Optimizer {
         $webp_mode    = get_option( 'cwpa_webp_serve_mode', '' );
 
         return [
-            'page_cache'           => (bool) get_option( 'cwpa_page_cache' ),
-            'gzip'                 => CWPA_Htaccess::has_section( 'GZIP' ) || $gzip_mode === 'php',
-            'gzip_mode'            => CWPA_Htaccess::has_section( 'GZIP' ) ? 'htaccess' : ( $gzip_mode ?: '' ),
-            'browser_cache'        => CWPA_Htaccess::has_section( 'BROWSER_CACHE' ) || $bcache_mode === 'php',
-            'browser_cache_mode'   => CWPA_Htaccess::has_section( 'BROWSER_CACHE' ) ? 'htaccess' : ( $bcache_mode ?: '' ),
-            'disable_emojis'       => (bool) get_option( 'cwpa_disable_emojis' ),
-            'disable_embeds'       => (bool) get_option( 'cwpa_disable_embeds' ),
-            'heartbeat_control'    => (bool) get_option( 'cwpa_heartbeat_control' ),
-            'defer_js'             => (bool) get_option( 'cwpa_defer_js' ),
-            'lazy_load'            => (bool) get_option( 'cwpa_lazy_load' ),
-            'html_minify'          => (bool) get_option( 'cwpa_html_minify' ),
-            'remove_query_strings' => (bool) get_option( 'cwpa_remove_query_strings' ),
-            'dns_prefetch'         => (bool) get_option( 'cwpa_dns_prefetch' ),
-            'webp_serving'         => CWPA_Htaccess::has_section( 'WEBP' ) || $webp_mode === 'php',
-            'webp_serving_mode'    => CWPA_Htaccess::has_section( 'WEBP' ) ? 'htaccess' : ( $webp_mode ?: '' ),
-            'webp_auto'            => (bool) get_option( 'cwpa_webp_auto' ),
-            'conflicts'            => $conflicts,
+            'page_cache'              => (bool) get_option( 'cwpa_page_cache' ),
+            'gzip'                    => CWPA_Htaccess::has_section( 'GZIP' ) || $gzip_mode === 'php',
+            'gzip_mode'               => CWPA_Htaccess::has_section( 'GZIP' ) ? 'htaccess' : ( $gzip_mode ?: '' ),
+            'browser_cache'           => CWPA_Htaccess::has_section( 'BROWSER_CACHE' ) || $bcache_mode === 'php',
+            'browser_cache_mode'      => CWPA_Htaccess::has_section( 'BROWSER_CACHE' ) ? 'htaccess' : ( $bcache_mode ?: '' ),
+            'disable_emojis'          => (bool) get_option( 'cwpa_disable_emojis' ),
+            'disable_embeds'          => (bool) get_option( 'cwpa_disable_embeds' ),
+            'heartbeat_control'       => (bool) get_option( 'cwpa_heartbeat_control' ),
+            'defer_js'                => (bool) get_option( 'cwpa_defer_js' ),
+            'lazy_load'               => (bool) get_option( 'cwpa_lazy_load' ),
+            'html_minify'             => (bool) get_option( 'cwpa_html_minify' ),
+            'remove_query_strings'    => (bool) get_option( 'cwpa_remove_query_strings' ),
+            'dns_prefetch'            => (bool) get_option( 'cwpa_dns_prefetch' ),
+            'webp_serving'            => CWPA_Htaccess::has_section( 'WEBP' ) || $webp_mode === 'php',
+            'webp_serving_mode'       => CWPA_Htaccess::has_section( 'WEBP' ) ? 'htaccess' : ( $webp_mode ?: '' ),
+            'webp_auto'               => (bool) get_option( 'cwpa_webp_auto' ),
+            // 4G optimizations
+            'font_display_swap'       => (bool) get_option( 'cwpa_font_display_swap' ),
+            'remove_wp_bloat'         => (bool) get_option( 'cwpa_remove_wp_bloat' ),
+            'disable_jquery_migrate'  => (bool) get_option( 'cwpa_disable_jquery_migrate' ),
+            'preload_key_assets'      => (bool) get_option( 'cwpa_preload_key_assets' ),
+            'save_data'               => (bool) get_option( 'cwpa_save_data' ),
+            'conflicts'               => $conflicts,
         ];
     }
 }

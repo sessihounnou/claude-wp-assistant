@@ -195,7 +195,8 @@
             fixId.indexOf('defer')>-1||fixId.indexOf('lazy')>-1||fixId.indexOf('minify')>-1||
             fixId.indexOf('query_strings')>-1||fixId.indexOf('dns_prefetch')>-1||
             fixId.indexOf('cache')>-1||fixId.indexOf('gzip')>-1||fixId.indexOf('browser_cache')>-1||
-            fixId.indexOf('webp')>-1) {
+            fixId.indexOf('webp')>-1||fixId.indexOf('font_display')>-1||fixId.indexOf('bloat')>-1||
+            fixId.indexOf('jquery_migrate')>-1||fixId.indexOf('preload')>-1||fixId.indexOf('save_data')>-1) {
           setTimeout(loadOptimizerStatus, 500);
         }
       } else {
@@ -460,8 +461,14 @@
     { id:'html_minify',          label:'Minification HTML',      desc:'Compresse le HTML en supprimant les espaces',    on:'enable_html_minify',    off:'disable_html_minify',   icon:'📝' },
     { id:'remove_query_strings', label:'Remove query strings',   desc:'Supprime ?ver= des ressources statiques',        on:'remove_query_strings',  off:'disable_query_strings', icon:'🔗' },
     { id:'dns_prefetch',         label:'DNS Prefetch',           desc:'Préconnecte aux domaines tiers (fonts, CDN)',     on:'enable_dns_prefetch',   off:'disable_dns_prefetch',  icon:'📡' },
-    { id:'webp_serving',         label:'Servir WebP (.htaccess)','desc':'Redirige auto vers .webp si disponible',       on:'enable_webp_serving',   off:'disable_webp_serving',  icon:'🌅' },
-    { id:'webp_auto',            label:'Auto-convert WebP',      desc:'Convertit les nouvelles images à l\'upload',     on:'enable_webp_auto',      off:'disable_webp_auto',     icon:'⚙️' },
+    { id:'webp_serving',            label:'Servir WebP (.htaccess)',   desc:'Redirige auto vers .webp si disponible',                on:'enable_webp_serving',         off:'disable_webp_serving',        icon:'🌅' },
+    { id:'webp_auto',               label:'Auto-convert WebP',         desc:'Convertit les nouvelles images à l\'upload',            on:'enable_webp_auto',            off:'disable_webp_auto',           icon:'⚙️' },
+    // ── 4G / Mobile ──────────────────────────────────────────────────────────
+    { id:'font_display_swap',       label:'Font-display swap',         desc:'Ajoute display=swap aux Google Fonts — évite le FOIT',  on:'enable_font_display_swap',    off:'disable_font_display_swap',   icon:'🔤' },
+    { id:'remove_wp_bloat',         label:'Supprimer le bloat WP',     desc:'Retire generator, rsd_link, wlwmanifest du <head>',     on:'enable_remove_wp_bloat',      off:'disable_remove_wp_bloat',     icon:'🧹' },
+    { id:'disable_jquery_migrate',  label:'Désactiver jQuery Migrate', desc:'Économise ~10 Ko — inutile sur les thèmes modernes',    on:'disable_jquery_migrate',      off:'enable_jquery_migrate',       icon:'⚡' },
+    { id:'preload_key_assets',      label:'Précharger CSS/police',     desc:'<link rel="preload"> sur le CSS principal et la police', on:'enable_preload_key_assets',   off:'disable_preload_key_assets',  icon:'🚀' },
+    { id:'save_data',               label:'Mode Save-Data (4G/3G)',    desc:'Allège le contenu quand le navigateur signale Save-Data',on:'enable_save_data',            off:'disable_save_data',           icon:'📡' },
   ];
 
   function loadOptimizerStatus(){

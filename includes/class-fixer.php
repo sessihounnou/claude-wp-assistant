@@ -60,6 +60,18 @@ class CWPA_Fixer {
             // ── LCP ───────────────────────────────────────────────────────────
             'enable_lcp'                => [ $this, 'toggle_option_on',  'cwpa_lcp_enabled' ],
             'disable_lcp'               => [ $this, 'toggle_option_off', 'cwpa_lcp_enabled' ],
+
+            // ── 4G / Mobile optimizations ─────────────────────────────────────
+            'enable_font_display_swap'      => [ $this, 'toggle_option_on',  'cwpa_font_display_swap' ],
+            'disable_font_display_swap'     => [ $this, 'toggle_option_off', 'cwpa_font_display_swap' ],
+            'enable_remove_wp_bloat'        => [ $this, 'toggle_option_on',  'cwpa_remove_wp_bloat' ],
+            'disable_remove_wp_bloat'       => [ $this, 'toggle_option_off', 'cwpa_remove_wp_bloat' ],
+            'enable_jquery_migrate'         => [ $this, 'toggle_option_off', 'cwpa_disable_jquery_migrate' ],
+            'disable_jquery_migrate'        => [ $this, 'toggle_option_on',  'cwpa_disable_jquery_migrate' ],
+            'enable_preload_key_assets'     => [ $this, 'toggle_option_on',  'cwpa_preload_key_assets' ],
+            'disable_preload_key_assets'    => [ $this, 'toggle_option_off', 'cwpa_preload_key_assets' ],
+            'enable_save_data'              => [ $this, 'toggle_option_on',  'cwpa_save_data' ],
+            'disable_save_data'             => [ $this, 'toggle_option_off', 'cwpa_save_data' ],
         ];
     }
 
@@ -279,7 +291,12 @@ class CWPA_Fixer {
             'cwpa_remove_query_strings' => 'Query strings supprimées des ressources statiques.',
             'cwpa_dns_prefetch'         => 'DNS prefetch activé.',
             'cwpa_webp_auto'            => 'Conversion WebP automatique à l\'upload activée.',
-            'cwpa_lcp_enabled'          => 'Optimisation LCP activée (preload image, fetchpriority, preconnect).',
+            'cwpa_lcp_enabled'               => 'Optimisation LCP activée (preload image, fetchpriority, preconnect).',
+            'cwpa_font_display_swap'         => 'Font-display swap activé — les polices Google Fonts ne bloquent plus le rendu.',
+            'cwpa_remove_wp_bloat'           => 'Balises inutiles supprimées du <head> (generator, rsd_link, wlwmanifest…).',
+            'cwpa_disable_jquery_migrate'    => 'jQuery Migrate désactivé (~10 Ko économisés).',
+            'cwpa_preload_key_assets'        => 'Préchargement des ressources clés activé (feuille de style principale, police).',
+            'cwpa_save_data'                 => 'Mode Save-Data activé — contenu allégé pour connexions lentes (4G/3G).',
         ];
         return [ 'success' => true, 'message' => $labels[ $option ] ?? "Option {$option} activée." ];
     }
