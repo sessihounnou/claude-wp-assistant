@@ -373,9 +373,12 @@
       var fixId     = active ? opt.off : opt.on;
       html += '<div class="cwpa-optim-card'+(active?' cwpa-optim-active':'')+(conflict?' cwpa-optim-conflict':'')+'">';
       html += '<div class="cwpa-optim-icon">'+opt.icon+'</div>';
+      var modeKey = opt.id + '_mode';
+      var mode = status[modeKey] || '';
       html += '<div class="cwpa-optim-info"><div class="cwpa-optim-label">'+escHtml(opt.label)+'</div>';
       html += '<div class="cwpa-optim-desc">'+escHtml(opt.desc)+'</div>';
       if (conflict) html += '<div class="cwpa-optim-conflict-badge">🔒 Géré par '+escHtml(conflict)+'</div>';
+      if (!conflict && active && mode) html += '<div class="cwpa-optim-mode-badge">'+(mode==='php'?'⚡ Mode PHP (fallback)':'⚙ Mode .htaccess')+'</div>';
       html += '</div>';
       html += '<div class="cwpa-optim-actions">';
       if (conflict) {

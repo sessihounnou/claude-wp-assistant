@@ -161,24 +161,44 @@ class CWPA_Fixer {
     // ══════════════════════════════════════════════════════════════════════════
 
     private function enable_gzip() {
+        // Tente .htaccess en premier
         $result = CWPA_Htaccess::write_section( 'GZIP', CWPA_Htaccess::gzip_rules() );
-        if ( is_wp_error( $result ) ) return [ 'success' => false, 'message' => $result->get_error_message() ];
-        return [ 'success' => true, 'message' => 'Compression GZIP activée dans .htaccess.' ];
+        if ( ! is_wp_error( $result ) ) {
+            update_option( 'cwpa_gzip_mode', 'htaccess' );
+            return [ 'success' => true, 'message' => 'Compression GZIP activée via .htaccess (Apache mod_deflate).' ];
+        }
+
+        // Fallback PHP via zlib
+        if ( extension_loaded( 'zlib' ) ) {
+            update_option( 'cwpa_gzip_mode', 'php' );
+            return [ 'success' => true, 'message' => 'Compression GZIP activée via PHP (zlib) — .htaccess non accessible sur ce serveur, fallback automatique.' ];
+        }
+
+        return [ 'success' => false, 'message' => '.htaccess inaccessible (' . $result->get_error_message() . ') et l\'extension zlib PHP n\'est pas disponible.' ];
     }
 
     private function disable_gzip() {
         CWPA_Htaccess::remove_section( 'GZIP' );
+        delete_option( 'cwpa_gzip_mode' );
         return [ 'success' => true, 'message' => 'Compression GZIP désactivée.' ];
     }
 
     private function enable_browser_cache() {
+        // Tente .htaccess en premier
         $result = CWPA_Htaccess::write_section( 'BROWSER_CACHE', CWPA_Htaccess::browser_cache_rules() );
-        if ( is_wp_error( $result ) ) return [ 'success' => false, 'message' => $result->get_error_message() ];
-        return [ 'success' => true, 'message' => 'Cache navigateur activé dans .htaccess.' ];
+        if ( ! is_wp_error( $result ) ) {
+            update_option( 'cwpa_browser_cache_mode', 'htaccess' );
+            return [ 'success' => true, 'message' => 'Cache navigateur activé via .htaccess (mod_expires + mod_headers).' ];
+        }
+
+        // Fallback PHP via headers
+        update_option( 'cwpa_browser_cache_mode', 'php' );
+        return [ 'success' => true, 'message' => 'Cache navigateur activé via PHP (headers HTTP) — .htaccess non accessible sur ce serveur, fallback automatique.' ];
     }
 
     private function disable_browser_cache() {
         CWPA_Htaccess::remove_section( 'BROWSER_CACHE' );
+        delete_option( 'cwpa_browser_cache_mode' );
         return [ 'success' => true, 'message' => 'Cache navigateur désactivé.' ];
     }
 
@@ -210,13 +230,21 @@ class CWPA_Fixer {
     // ══════════════════════════════════════════════════════════════════════════
 
     private function enable_webp_serving() {
+        // Tente .htaccess en premier
         $result = CWPA_Htaccess::write_section( 'WEBP', CWPA_Htaccess::webp_serving_rules() );
-        if ( is_wp_error( $result ) ) return [ 'success' => false, 'message' => $result->get_error_message() ];
-        return [ 'success' => true, 'message' => 'Servir WebP activé dans .htaccess. Les navigateurs compatibles recevront automatiquement les images WebP.' ];
+        if ( ! is_wp_error( $result ) ) {
+            update_option( 'cwpa_webp_serve_mode', 'htaccess' );
+            return [ 'success' => true, 'message' => 'Serving WebP activé via .htaccess (mod_rewrite). Les navigateurs compatibles recevront automatiquement les images WebP.' ];
+        }
+
+        // Fallback PHP — middleware init qui sert les .webp si acceptés
+        update_option( 'cwpa_webp_serve_mode', 'php' );
+        return [ 'success' => true, 'message' => 'Serving WebP activé via PHP (middleware) — .htaccess non accessible sur ce serveur, fallback automatique.' ];
     }
 
     private function disable_webp_serving() {
         CWPA_Htaccess::remove_section( 'WEBP' );
+        delete_option( 'cwpa_webp_serve_mode' );
         return [ 'success' => true, 'message' => 'Serving WebP désactivé.' ];
     }
 

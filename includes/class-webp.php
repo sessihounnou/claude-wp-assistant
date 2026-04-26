@@ -9,6 +9,58 @@ class CWPA_WebP {
         }
     }
 
+    // ── Serving WebP via PHP (fallback si .htaccess inaccessible/Nginx) ──────
+    public static function register_php_serving() {
+        add_action( 'init', [ __CLASS__, 'serve_webp_php' ], 1 );
+    }
+
+    public static function serve_webp_php() {
+        if ( is_admin() ) return;
+
+        // Vérifie que le navigateur accepte WebP
+        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+        if ( strpos( $accept, 'image/webp' ) === false ) return;
+
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+
+        // Ignore si ce n'est pas une requête d'image
+        if ( ! preg_match( '/\.(jpe?g|png|gif)(\?.*)?$/i', $uri ) ) return;
+
+        $upload_dir = wp_upload_dir();
+        $base_url   = trailingslashit( $upload_dir['baseurl'] );
+        $base_dir   = trailingslashit( $upload_dir['basedir'] );
+        $site_url   = trailingslashit( get_site_url() );
+
+        // Construit le chemin fichier depuis l'URL
+        $clean_uri = strtok( $uri, '?' );
+        $file_path = ABSPATH . ltrim( $clean_uri, '/' );
+        $real_path = realpath( $file_path );
+
+        if ( ! $real_path ) return;
+
+        // Sécurité : le fichier doit être dans wp-content ou ABSPATH
+        $allowed_roots = [ realpath( WP_CONTENT_DIR ), realpath( ABSPATH ) ];
+        $in_allowed    = false;
+        foreach ( $allowed_roots as $root ) {
+            if ( $root && strpos( $real_path, $root ) === 0 ) { $in_allowed = true; break; }
+        }
+        if ( ! $in_allowed ) return;
+
+        $webp_path = preg_replace( '/\.(jpe?g|png|gif)$/i', '.webp', $real_path );
+        if ( ! file_exists( $webp_path ) ) return;
+
+        // Sert le fichier WebP
+        if ( ! headers_sent() ) {
+            header( 'Content-Type: image/webp' );
+            header( 'Content-Length: ' . filesize( $webp_path ) );
+            header( 'Vary: Accept' );
+            header( 'Cache-Control: public, max-age=31536000, immutable' );
+            header( 'X-CWPA-WebP: PHP-served' );
+        }
+        readfile( $webp_path );
+        exit;
+    }
+
     // ── Driver detection ─────────────────────────────────────────────────────
     public static function get_driver() {
         if ( extension_loaded( 'imagick' ) ) {

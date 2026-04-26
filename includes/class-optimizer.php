@@ -57,6 +57,45 @@ class CWPA_Optimizer {
         if ( get_option( 'cwpa_dns_prefetch' ) ) {
             add_action( 'wp_head', [ __CLASS__, 'output_dns_prefetch' ], 1 );
         }
+
+        // ── Fallbacks PHP quand .htaccess n'est pas accessible ──────────────
+        if ( get_option( 'cwpa_gzip_mode' ) === 'php' && ! self::has_conflict( 'gzip' ) ) {
+            self::setup_php_gzip();
+        }
+        if ( get_option( 'cwpa_browser_cache_mode' ) === 'php' && ! self::has_conflict( 'browser_cache' ) ) {
+            add_action( 'send_headers', [ __CLASS__, 'php_browser_cache_headers' ] );
+        }
+        if ( get_option( 'cwpa_webp_serve_mode' ) === 'php' ) {
+            CWPA_WebP::register_php_serving();
+        }
+    }
+
+    // ── PHP GZIP via zlib ────────────────────────────────────────────────────
+    private static function setup_php_gzip() {
+        if ( headers_sent() || ! extension_loaded( 'zlib' ) ) return;
+        if ( ! is_admin() ) {
+            add_action( 'template_redirect', function() {
+                if ( ! ob_get_level() ) {
+                    @ini_set( 'zlib.output_compression', '1' );
+                    @ini_set( 'zlib.output_compression_level', '6' );
+                }
+            }, 1 );
+        }
+    }
+
+    // ── PHP Browser Cache via headers ────────────────────────────────────────
+    public static function php_browser_cache_headers() {
+        if ( is_admin() || is_user_logged_in() ) return;
+
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+
+        if ( preg_match( '/\.(jpe?g|png|gif|webp|svg|ico|mp4|woff2?)(\?.*)?$/i', $uri ) ) {
+            header( 'Cache-Control: public, max-age=31536000, immutable' );
+            header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + 31536000 ) . ' GMT' );
+        } elseif ( preg_match( '/\.(css|js)(\?.*)?$/i', $uri ) ) {
+            header( 'Cache-Control: public, max-age=2592000' );
+            header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + 2592000 ) . ' GMT' );
+        }
     }
 
     // ── Emojis ───────────────────────────────────────────────────────────────
@@ -161,10 +200,16 @@ class CWPA_Optimizer {
             if ( $name ) $conflicts[ $f ] = $name;
         }
 
+        $gzip_mode    = get_option( 'cwpa_gzip_mode', '' );
+        $bcache_mode  = get_option( 'cwpa_browser_cache_mode', '' );
+        $webp_mode    = get_option( 'cwpa_webp_serve_mode', '' );
+
         return [
             'page_cache'           => (bool) get_option( 'cwpa_page_cache' ),
-            'gzip'                 => CWPA_Htaccess::has_section( 'GZIP' ),
-            'browser_cache'        => CWPA_Htaccess::has_section( 'BROWSER_CACHE' ),
+            'gzip'                 => CWPA_Htaccess::has_section( 'GZIP' ) || $gzip_mode === 'php',
+            'gzip_mode'            => CWPA_Htaccess::has_section( 'GZIP' ) ? 'htaccess' : ( $gzip_mode ?: '' ),
+            'browser_cache'        => CWPA_Htaccess::has_section( 'BROWSER_CACHE' ) || $bcache_mode === 'php',
+            'browser_cache_mode'   => CWPA_Htaccess::has_section( 'BROWSER_CACHE' ) ? 'htaccess' : ( $bcache_mode ?: '' ),
             'disable_emojis'       => (bool) get_option( 'cwpa_disable_emojis' ),
             'disable_embeds'       => (bool) get_option( 'cwpa_disable_embeds' ),
             'heartbeat_control'    => (bool) get_option( 'cwpa_heartbeat_control' ),
@@ -173,7 +218,8 @@ class CWPA_Optimizer {
             'html_minify'          => (bool) get_option( 'cwpa_html_minify' ),
             'remove_query_strings' => (bool) get_option( 'cwpa_remove_query_strings' ),
             'dns_prefetch'         => (bool) get_option( 'cwpa_dns_prefetch' ),
-            'webp_serving'         => CWPA_Htaccess::has_section( 'WEBP' ),
+            'webp_serving'         => CWPA_Htaccess::has_section( 'WEBP' ) || $webp_mode === 'php',
+            'webp_serving_mode'    => CWPA_Htaccess::has_section( 'WEBP' ) ? 'htaccess' : ( $webp_mode ?: '' ),
             'webp_auto'            => (bool) get_option( 'cwpa_webp_auto' ),
             'conflicts'            => $conflicts,
         ];
