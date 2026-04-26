@@ -346,17 +346,31 @@
 
   function loadOptimizerStatus(){
     console.log('[CWPA] Chargement statut optimisations...');
+
+    // Timeout de sécurité — si AJAX ne répond pas en 12s, affiche un diagnostic
+    var timeoutOptim = setTimeout(function(){
+      console.error('[CWPA] Timeout optimizer_status — AJAX bloqué ou version obsolète');
+      $('#cwpa-optim-grid').html(cwpaTimeoutMsg('cwpa_optimizer_status'));
+    }, 12000);
+
     $.post(CWPA.ajax_url, { action:'cwpa_optimizer_status', nonce:CWPA.nonce })
       .done(function(res){
+        clearTimeout(timeoutOptim);
         console.log('[CWPA] Réponse optimizer_status:', res);
+        // WordPress retourne -1 si l'action AJAX n'est pas enregistrée (version obsolète)
+        if (res === -1 || res === '-1' || res === 0) {
+          $('#cwpa-optim-grid').html('<div class="cwpa-ajax-error">⚠ Action AJAX non reconnue — installez la dernière version du plugin (v'+CWPA.version+' chargé mais le serveur a peut-être une version plus ancienne).</div>');
+          return;
+        }
         if (!res || !res.success) {
-          var err = (res && res.data) ? res.data : 'Réponse invalide (voir console)';
+          var err = (res && res.data) ? res.data : 'Réponse invalide (voir console F12)';
           $('#cwpa-optim-grid').html('<div class="cwpa-ajax-error">⚠ Erreur : ' + escHtml(String(err)) + '</div>');
           return;
         }
         renderOptimizer(res.data.status, res.data.cache);
       })
       .fail(function(xhr, status, error){
+        clearTimeout(timeoutOptim);
         console.error('[CWPA] Échec optimizer_status:', xhr.status, status, xhr.responseText);
         var msg = xhr.status === 0 ? 'Serveur injoignable (vérifiez admin-ajax.php)' :
                   'HTTP ' + xhr.status + ' — ' + escHtml(xhr.responseText.substring(0, 150));
@@ -439,9 +453,20 @@
   // ══════════════════════════════════════════════════════════
   function loadWebPStats(){
     console.log('[CWPA] Chargement stats WebP...');
+
+    var timeoutWebP = setTimeout(function(){
+      console.error('[CWPA] Timeout webp_stats — AJAX bloqué ou version obsolète');
+      $('#cwpa-webp-panel').html(cwpaTimeoutMsg('cwpa_webp_stats'));
+    }, 12000);
+
     $.post(CWPA.ajax_url, { action:'cwpa_webp_stats', nonce:CWPA.nonce })
       .done(function(res){
+        clearTimeout(timeoutWebP);
         console.log('[CWPA] Réponse webp_stats:', res);
+        if (res === -1 || res === '-1' || res === 0) {
+          $('#cwpa-webp-panel').html('<div class="cwpa-ajax-error">⚠ Action AJAX non reconnue — installez la dernière version du plugin.</div>');
+          return;
+        }
         if (!res || !res.success) {
           var err = (res && res.data) ? res.data : 'Réponse invalide (voir console)';
           $('#cwpa-webp-panel').html('<div class="cwpa-ajax-error">⚠ Erreur WebP : ' + escHtml(String(err)) + '</div>');
@@ -450,6 +475,7 @@
         renderWebP(res.data);
       })
       .fail(function(xhr, status, error){
+        clearTimeout(timeoutWebP);
         console.error('[CWPA] Échec webp_stats:', xhr.status, status, xhr.responseText);
         var msg = xhr.status === 0 ? 'Serveur injoignable' : 'HTTP ' + xhr.status + ' — ' + escHtml(xhr.responseText.substring(0, 150));
         $('#cwpa-webp-panel').html('<div class="cwpa-ajax-error">⚠ Erreur AJAX WebP : ' + msg + '</div>');
@@ -629,6 +655,17 @@
   function escHtml(str){
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function cwpaTimeoutMsg(action){
+    return '<div class="cwpa-ajax-error" style="line-height:1.7">'
+      + '⚠ <strong>Aucune réponse du serveur</strong> pour <code>'+escHtml(action)+'</code>.<br>'
+      + 'Causes possibles :<br>'
+      + '• Plugin pas à jour — <a href="update-core.php" style="color:var(--cwpa-accent)">installer la dernière version</a><br>'
+      + '• Un plugin de sécurité bloque <code>admin-ajax.php</code> (Wordfence, iThemes…)<br>'
+      + '• LiteSpeed Cache ou un plugin de cache sert une page avec un nonce expiré<br>'
+      + 'Ouvrez F12 → Console et cherchez les logs <code>[CWPA]</code> pour plus de détails.'
+      + '</div>';
   }
 
   function escAttr(str){ return escHtml(str); }
