@@ -21,6 +21,8 @@ class CWPA_Admin {
         add_action( 'wp_ajax_cwpa_webp_convert',      [ $this, 'ajax_webp_convert' ] );
         add_action( 'wp_ajax_cwpa_cache_clear',       [ $this, 'ajax_cache_clear' ] );
         add_action( 'wp_ajax_cwpa_diagnostics',       [ $this, 'ajax_diagnostics' ] );
+        add_action( 'wp_ajax_cwpa_pagespeed_ai',      [ $this, 'ajax_pagespeed_ai' ] );
+        add_action( 'wp_ajax_cwpa_apply_all_fixes',   [ $this, 'ajax_apply_all_fixes' ] );
     }
 
     public function register_menu() {
@@ -327,6 +329,56 @@ class CWPA_Admin {
         }
 
         wp_send_json_success( $checks );
+    }
+
+    // ── PageSpeed AI — envoie les résultats PageSpeed à Claude ───────────────
+    public function ajax_pagespeed_ai() {
+        check_ajax_referer( 'cwpa_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
+
+        $raw = isset( $_POST['pagespeed_data'] ) ? wp_unslash( $_POST['pagespeed_data'] ) : '';
+        $pagespeed_data = json_decode( $raw, true );
+        if ( ! $pagespeed_data ) {
+            wp_send_json_error( 'Données PageSpeed manquantes ou invalides.' );
+        }
+
+        $optimizer_status = CWPA_Optimizer::get_status();
+
+        $api    = new CWPA_API();
+        $result = $api->analyze_pagespeed( $pagespeed_data, $optimizer_status );
+
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( $result->get_error_message() );
+        }
+
+        $parsed = json_decode( $result, true );
+        if ( json_last_error() !== JSON_ERROR_NONE ) {
+            wp_send_json_error( 'Réponse IA invalide : ' . substr( $result, 0, 200 ) );
+        }
+
+        wp_send_json_success( $parsed );
+    }
+
+    // ── Applique une liste de fix_ids en une seule requête ────────────────────
+    public function ajax_apply_all_fixes() {
+        check_ajax_referer( 'cwpa_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
+
+        $raw     = isset( $_POST['fix_ids'] ) ? wp_unslash( $_POST['fix_ids'] ) : '[]';
+        $fix_ids = json_decode( $raw, true );
+        if ( ! is_array( $fix_ids ) || empty( $fix_ids ) ) {
+            wp_send_json_error( 'Aucun fix_id fourni.' );
+        }
+
+        $fixer   = new CWPA_Fixer();
+        $results = [];
+        foreach ( $fix_ids as $fix_id ) {
+            $fix_id    = sanitize_key( $fix_id );
+            $results[] = array_merge( [ 'fix_id' => $fix_id ], $fixer->apply_fix( $fix_id ) );
+        }
+
+        $applied = count( array_filter( $results, fn( $r ) => $r['success'] ) );
+        wp_send_json_success( [ 'results' => $results, 'applied' => $applied, 'total' => count( $fix_ids ) ] );
     }
 
     private function diag( $label, $ok, $ok_msg = '', $fail_msg = '', $force_status = '' ) {

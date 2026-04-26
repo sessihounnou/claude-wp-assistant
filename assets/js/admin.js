@@ -144,6 +144,18 @@
     }
 
     issues.sort(function(a,b){ var o={critical:0,warning:1,info:2}; return (o[a.severity]||2)-(o[b.severity]||2); });
+
+    // "Tout corriger" bar
+    var fixableIds = issues.filter(function(i){ return i.auto_fixable && i.fix_id; }).map(function(i){ return i.fix_id; });
+    var uniqueIds  = fixableIds.filter(function(v,i,a){ return a.indexOf(v)===i; });
+    if (uniqueIds.length) {
+      html += '<div class="cwpa-all-fixes-bar">';
+      html += '<span class="cwpa-all-fixes-info">'+uniqueIds.length+' correction'+(uniqueIds.length>1?'s':'')+' automatique'+(uniqueIds.length>1?'s':'')+' disponible'+(uniqueIds.length>1?'s':'')+'</span>';
+      html += '<button class="cwpa-btn cwpa-btn-primary cwpa-btn-apply-all" data-fixes="'+escAttr(JSON.stringify(uniqueIds))+'">⚡ Tout corriger automatiquement</button>';
+      html += '<span class="cwpa-apply-all-result"></span>';
+      html += '</div>';
+    }
+
     html += '<div class="cwpa-issues-list">';
     issues.forEach(function(issue, i){
       var fixId  = issue.fix_id || '';
@@ -194,6 +206,44 @@
     }).fail(function(){
       $res.removeClass('success').addClass('error').text('✗ Erreur réseau').show();
       $btn.prop('disabled', false).text('Corriger automatiquement');
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // TOUT CORRIGER (batch fixes)
+  // ══════════════════════════════════════════════════════════
+  $(document).on('click', '.cwpa-btn-apply-all', function(){
+    var $btn    = $(this).prop('disabled', true);
+    var fixIds  = JSON.parse($btn.data('fixes') || '[]');
+    var $result = $btn.siblings('.cwpa-apply-all-result');
+    if (!fixIds.length) return;
+
+    $btn.text('Application en cours… (0/'+fixIds.length+')');
+    $result.text('').removeClass('error success');
+
+    $.post(CWPA.ajax_url, {
+      action:  'cwpa_apply_all_fixes',
+      nonce:   CWPA.nonce,
+      fix_ids: JSON.stringify(fixIds)
+    }, function(res){
+      if (res.success) {
+        var d = res.data;
+        $btn.text('✓ '+d.applied+'/'+d.total+' correction'+(d.total>1?'s':'')+' appliquée'+(d.applied>1?'s':''));
+        $result.addClass('success').text(d.applied === d.total ? 'Tout appliqué !' : d.applied+' appliquées, '+(d.total-d.applied)+' échouées');
+        // Marque les boutons individuels comme corrigés
+        fixIds.forEach(function(fid){
+          var $fb = $('[data-fix="'+fid+'"]').not('.cwpa-btn-apply-all');
+          $fb.prop('disabled', true).text('✓ Corrigé').css('opacity','0.5');
+          $fb.siblings('.cwpa-fix-result').addClass('success').text('✓ Appliqué').show();
+        });
+        setTimeout(loadOptimizerStatus, 500);
+      } else {
+        $btn.prop('disabled', false).text('⚡ Tout corriger automatiquement');
+        $result.addClass('error').text('⚠ '+escHtml(String(res.data)));
+      }
+    }).fail(function(){
+      $btn.prop('disabled', false).text('⚡ Tout corriger automatiquement');
+      $result.addClass('error').text('⚠ Erreur réseau');
     });
   });
 
@@ -323,6 +373,76 @@
 
     $('#cwpa-pagespeed-results').html(html).show();
     scrollTo($('#cwpa-pagespeed-results'));
+
+    // Auto-appel Claude si API configurée
+    if (CWPA.api_set) {
+      askClaudePageSpeed(d);
+    }
+  }
+
+  function askClaudePageSpeed(psData) {
+    var $container = $('#cwpa-pagespeed-results');
+    var $aiBlock = $('<div class="cwpa-ps-ai-section"><div class="cwpa-loading-inline"><div class="cwpa-spinner-sm"></div> <strong>⬡ Claude analyse les résultats PageSpeed…</strong></div></div>');
+    $container.append($aiBlock);
+
+    $.post(CWPA.ajax_url, {
+      action:        'cwpa_pagespeed_ai',
+      nonce:         CWPA.nonce,
+      pagespeed_data: JSON.stringify(psData)
+    }, function(res){
+      if (!res.success) {
+        $aiBlock.html('<div class="cwpa-ajax-error">⚠ Erreur analyse Claude : '+escHtml(res.data)+'</div>');
+        return;
+      }
+      renderPageSpeedAI(res.data, $aiBlock);
+    }).fail(function(xhr){
+      $aiBlock.html('<div class="cwpa-ajax-error">⚠ Erreur réseau analyse Claude (HTTP '+xhr.status+')</div>');
+    });
+  }
+
+  function renderPageSpeedAI(data, $container) {
+    if (!data || !data.fixes || !data.fixes.length) {
+      $container.html('<div class="cwpa-ps-ai-section"><div class="cwpa-ps-ai-header"><span class="cwpa-ps-ai-title">⬡ Claude AI</span> <span style="color:var(--cwpa-ok);font-size:13px;">✓ Aucune correction prioritaire supplémentaire détectée.</span></div></div>');
+      return;
+    }
+
+    var fixableIds = data.fixes
+      .filter(function(f){ return f.auto_fixable && f.fix_id; })
+      .map(function(f){ return f.fix_id; })
+      .filter(function(v,i,a){ return a.indexOf(v)===i; });
+
+    var html = '<div class="cwpa-ps-ai-section">';
+    html += '<div class="cwpa-ps-ai-header">';
+    html += '<div class="cwpa-ps-ai-title">⬡ Recommandations Claude AI</div>';
+    if (data.summary) html += '<div class="cwpa-ps-ai-summary">'+escHtml(data.summary)+'</div>';
+    if (fixableIds.length) {
+      html += '<div class="cwpa-ps-ai-actions">';
+      html += '<button class="cwpa-btn cwpa-btn-primary cwpa-btn-apply-all" data-fixes="'+escAttr(JSON.stringify(fixableIds))+'">⚡ Tout corriger ('+fixableIds.length+' correction'+(fixableIds.length>1?'s':'')+')</button>';
+      html += '<span class="cwpa-apply-all-result"></span>';
+      html += '</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="cwpa-ps-ai-fixes">';
+    data.fixes.forEach(function(fix, i){
+      var canFix = fix.auto_fixable && fix.fix_id;
+      var impact = fix.impact || 'medium';
+      html += '<div class="cwpa-ps-ai-fix">';
+      html += '<div class="cwpa-ps-ai-fix-head">';
+      html += '<span class="cwpa-ps-ai-impact cwpa-impact-'+escAttr(impact)+'">'+escHtml(impact.toUpperCase())+'</span>';
+      html += '<span class="cwpa-ps-ai-fix-title">'+escHtml(fix.title||'')+'</span>';
+      html += '</div>';
+      html += '<div class="cwpa-ps-ai-fix-desc">'+escHtml(fix.description||'')+'</div>';
+      html += '<div class="cwpa-issue-actions">';
+      if (canFix) {
+        html += '<button class="cwpa-btn cwpa-btn-fix" data-fix="'+escAttr(fix.fix_id)+'">✓ Corriger automatiquement</button>';
+        html += '<span class="cwpa-fix-result" id="ai-fix-'+i+'"></span>';
+      }
+      html += '</div></div>';
+    });
+    html += '</div></div>';
+
+    $container.html(html);
   }
 
   // ══════════════════════════════════════════════════════════

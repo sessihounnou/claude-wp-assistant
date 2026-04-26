@@ -3,7 +3,7 @@
  * Plugin Name: Claude WP Assistant
  * Plugin URI:  https://biristools.com
  * Description: Connectez Claude AI à votre WordPress pour analyser et résoudre automatiquement les problèmes de performance, sécurité, SEO, erreurs PHP et conflits de plugins. Inclut PageSpeed, cache, WebP, GZIP et toutes les optimisations WP Rocket.
- * Version:     1.2.0
+ * Version:     1.3.0
  * Author:      Biristools
  * Author URI:  https://biristools.com
  * License:     GPL-2.0+
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'CWPA_VERSION',     '1.2.0' );
+define( 'CWPA_VERSION',     '1.3.0' );
 define( 'CWPA_PATH',        plugin_dir_path( __FILE__ ) );
 define( 'CWPA_URL',         plugin_dir_url( __FILE__ ) );
 define( 'CWPA_GITHUB_REPO', 'sessihounnou/claude-wp-assistant' );
