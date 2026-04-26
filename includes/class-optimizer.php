@@ -3,18 +3,60 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class CWPA_Optimizer {
 
+    // ── Plugins d'optimisation connus — évite les doubles traitements ────────
+    private static $conflict_map = [
+        'gzip'                 => [ 'wp-rocket/wp-rocket.php', 'litespeed-cache/litespeed-cache.php', 'w3-total-cache/w3-total-cache.php', 'wp-super-cache/wp-cache.php' ],
+        'browser_cache'        => [ 'wp-rocket/wp-rocket.php', 'litespeed-cache/litespeed-cache.php', 'w3-total-cache/w3-total-cache.php' ],
+        'defer_js'             => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php', 'flying-scripts/flying-scripts.php' ],
+        'lazy_load'            => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php', 'a3-lazy-load/a3-lazy-load.php', 'lazy-loader/lazy-loader.php' ],
+        'html_minify'          => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php', 'fast-velocity-minify/fast-velocity-minify.php' ],
+        'remove_query_strings' => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php' ],
+        'page_cache'           => [ 'wp-rocket/wp-rocket.php', 'litespeed-cache/litespeed-cache.php', 'w3-total-cache/w3-total-cache.php', 'wp-super-cache/wp-cache.php', 'comet-cache/comet-cache.php' ],
+    ];
+
+    public static function has_conflict( $feature ) {
+        if ( ! function_exists( 'is_plugin_active' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        foreach ( self::$conflict_map[ $feature ] ?? [] as $plugin ) {
+            if ( is_plugin_active( $plugin ) ) return true;
+        }
+        return false;
+    }
+
+    public static function get_conflict_name( $feature ) {
+        if ( ! function_exists( 'is_plugin_active' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        foreach ( self::$conflict_map[ $feature ] ?? [] as $plugin ) {
+            if ( is_plugin_active( $plugin ) ) {
+                return basename( dirname( $plugin ) ); // e.g. "wp-rocket"
+            }
+        }
+        return null;
+    }
+
     public static function init() {
-        if ( get_option( 'cwpa_disable_emojis' ) )       self::setup_disable_emojis();
-        if ( get_option( 'cwpa_disable_embeds' ) )       self::setup_disable_embeds();
-        if ( get_option( 'cwpa_heartbeat_control' ) )    self::setup_heartbeat();
-        if ( get_option( 'cwpa_defer_js' ) )             add_filter( 'script_loader_tag', [ __CLASS__, 'defer_js' ], 10, 3 );
-        if ( get_option( 'cwpa_lazy_load' ) )            add_filter( 'the_content', [ __CLASS__, 'add_lazy_load' ] );
-        if ( get_option( 'cwpa_html_minify' ) && ! is_admin() ) add_action( 'template_redirect', [ __CLASS__, 'start_html_minify' ], 999 );
-        if ( get_option( 'cwpa_remove_query_strings' ) ) {
+        if ( get_option( 'cwpa_disable_emojis' ) )    self::setup_disable_emojis();
+        if ( get_option( 'cwpa_disable_embeds' ) )    self::setup_disable_embeds();
+        if ( get_option( 'cwpa_heartbeat_control' ) ) self::setup_heartbeat();
+
+        if ( get_option( 'cwpa_defer_js' ) && ! self::has_conflict( 'defer_js' ) ) {
+            add_filter( 'script_loader_tag', [ __CLASS__, 'defer_js' ], 10, 3 );
+        }
+        if ( get_option( 'cwpa_lazy_load' ) && ! self::has_conflict( 'lazy_load' ) ) {
+            add_filter( 'the_content', [ __CLASS__, 'add_lazy_load' ] );
+        }
+        if ( get_option( 'cwpa_html_minify' ) && ! is_admin() && ! self::has_conflict( 'html_minify' ) ) {
+            add_action( 'template_redirect', [ __CLASS__, 'start_html_minify' ], 999 );
+        }
+        if ( get_option( 'cwpa_remove_query_strings' ) && ! self::has_conflict( 'remove_query_strings' ) ) {
             add_filter( 'script_loader_src', [ __CLASS__, 'remove_query_strings' ], 15 );
             add_filter( 'style_loader_src',  [ __CLASS__, 'remove_query_strings' ], 15 );
         }
-        if ( get_option( 'cwpa_dns_prefetch' ) ) add_action( 'wp_head', [ __CLASS__, 'output_dns_prefetch' ], 1 );
+        if ( get_option( 'cwpa_dns_prefetch' ) ) {
+            add_action( 'wp_head', [ __CLASS__, 'output_dns_prefetch' ], 1 );
+        }
     }
 
     // ── Emojis ───────────────────────────────────────────────────────────────
@@ -112,6 +154,13 @@ class CWPA_Optimizer {
 
     // ── Status ───────────────────────────────────────────────────────────────
     public static function get_status() {
+        $features_with_conflict = [ 'gzip', 'browser_cache', 'defer_js', 'lazy_load', 'html_minify', 'remove_query_strings', 'page_cache' ];
+        $conflicts = [];
+        foreach ( $features_with_conflict as $f ) {
+            $name = self::get_conflict_name( $f );
+            if ( $name ) $conflicts[ $f ] = $name;
+        }
+
         return [
             'page_cache'           => (bool) get_option( 'cwpa_page_cache' ),
             'gzip'                 => CWPA_Htaccess::has_section( 'GZIP' ),
@@ -126,6 +175,7 @@ class CWPA_Optimizer {
             'dns_prefetch'         => (bool) get_option( 'cwpa_dns_prefetch' ),
             'webp_serving'         => CWPA_Htaccess::has_section( 'WEBP' ),
             'webp_auto'            => (bool) get_option( 'cwpa_webp_auto' ),
+            'conflicts'            => $conflicts,
         ];
     }
 }

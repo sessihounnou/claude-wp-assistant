@@ -1,6 +1,7 @@
 /* Claude WP Assistant — Admin Styles */
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
+/* Variables dans :root ET dans .cwpa-wrap — protège contre les overrides d'autres plugins */
 :root {
   --cwpa-bg:       #0f0f11;
   --cwpa-surface:  #18181c;
@@ -19,7 +20,34 @@
 }
 
 .cwpa-wrap * { box-sizing: border-box; }
-.cwpa-wrap { font-family:'DM Sans',sans-serif; background:var(--cwpa-bg); min-height:100vh; margin:-20px -20px 0 -2px; padding:0; color:var(--cwpa-text); position:relative; }
+.cwpa-wrap {
+  /* Redéclare les variables pour les isoler des overrides d'autres plugins */
+  --cwpa-bg:       #0f0f11;
+  --cwpa-surface:  #18181c;
+  --cwpa-surface2: #222228;
+  --cwpa-border:   #2e2e36;
+  --cwpa-accent:   #D4A853;
+  --cwpa-accent2:  #c4954a;
+  --cwpa-text:     #e8e8f0;
+  --cwpa-text2:    #9090a8;
+  --cwpa-critical: #ff4d6d;
+  --cwpa-warning:  #ffb347;
+  --cwpa-info:     #4da6ff;
+  --cwpa-ok:       #4dde94;
+  --cwpa-radius:   12px;
+  --cwpa-shadow:   0 4px 24px rgba(0,0,0,0.4);
+  font-family:'DM Sans',sans-serif; background:var(--cwpa-bg); min-height:100vh; margin:-20px -20px 0 -2px; padding:0; color:var(--cwpa-text); position:relative;
+}
+
+/* Reset — neutralise les styles WP admin et plugins qui saignent dans notre UI */
+.cwpa-wrap h1,.cwpa-wrap h2,.cwpa-wrap h3,.cwpa-wrap h4 { color:inherit; font-family:inherit; font-weight:inherit; line-height:inherit; padding:0; border:none; background:none; box-shadow:none; }
+.cwpa-wrap p { color:inherit; font-size:inherit; line-height:inherit; margin:0; }
+.cwpa-wrap a { color:var(--cwpa-accent); text-decoration:none; }
+.cwpa-wrap a:hover { color:var(--cwpa-accent2); text-decoration:underline; }
+.cwpa-wrap input,.cwpa-wrap select,.cwpa-wrap textarea { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--cwpa-text); background:var(--cwpa-surface2); border:1px solid var(--cwpa-border); border-radius:8px; padding:8px 12px; outline:none; box-shadow:none; transition:border-color .2s; }
+.cwpa-wrap input:focus,.cwpa-wrap select:focus,.cwpa-wrap textarea:focus { border-color:var(--cwpa-accent); box-shadow:0 0 0 2px rgba(212,168,83,.15); }
+.cwpa-wrap select { appearance:auto; }
+.cwpa-wrap label { color:inherit; font-family:inherit; }
 
 /* ── Header ──────────────────────────────────────────────── */
 .cwpa-header { background:linear-gradient(135deg,#18181c 0%,#1e1a12 100%); border-bottom:1px solid var(--cwpa-border); padding:0 32px; }
@@ -163,6 +191,8 @@
 .cwpa-optim-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
 .cwpa-optim-card { background:var(--cwpa-surface); border:1px solid var(--cwpa-border); border-radius:var(--cwpa-radius); padding:16px 20px; display:flex; align-items:center; gap:14px; transition:border-color .2s; }
 .cwpa-optim-card.cwpa-optim-active { border-color:rgba(77,222,148,.35); background:rgba(77,222,148,.03); }
+.cwpa-optim-card.cwpa-optim-conflict { border-color:rgba(77,166,255,.3); background:rgba(77,166,255,.03); opacity:.8; }
+.cwpa-optim-conflict-badge { font-size:10px; color:var(--cwpa-info); margin-top:4px; font-style:italic; }
 .cwpa-optim-icon { font-size:22px; flex-shrink:0; width:36px; text-align:center; }
 .cwpa-optim-info { flex:1; min-width:0; }
 .cwpa-optim-label { font-size:13px; font-weight:600; color:var(--cwpa-text); margin-bottom:2px; }

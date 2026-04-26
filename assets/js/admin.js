@@ -8,6 +8,16 @@
   }
   console.log('[CWPA] v' + (CWPA.version || '?') + ' chargé — ajax_url: ' + CWPA.ajax_url);
 
+  // ── Gestion nonce expiré — si un plugin de cache sert une page ancienne ──
+  $(document).ajaxError(function(event, xhr){
+    if (xhr.status === 403) {
+      console.warn('[CWPA] Nonce expiré (403). Rechargement de la page dans 2s...');
+      var $banner = $('<div style="position:fixed;top:32px;left:0;right:0;z-index:99999;background:#D4A853;color:#000;text-align:center;padding:10px;font-weight:600;">Session expirée — rechargement automatique...</div>');
+      $('body').prepend($banner);
+      setTimeout(function(){ location.reload(); }, 2000);
+    }
+  });
+
   var chatHistory = [];
   var lastScanData = {};
   var scanLabels = { php_errors:'Erreurs PHP', performance:'Performance DB', plugins:'Plugins', security:'Sécurité', seo:'SEO' };
@@ -323,18 +333,26 @@
   }
 
   function renderOptimizer(status, cache){
+    var conflicts = status.conflicts || {};
     var html = '<div class="cwpa-optim-cards">';
     optimDefs.forEach(function(opt){
-      var active = status[opt.id] || false;
-      var fixId  = active ? opt.off : opt.on;
-      html += '<div class="cwpa-optim-card'+(active?' cwpa-optim-active':'')+'">';
+      var active    = status[opt.id] || false;
+      var conflict  = conflicts[opt.id] || null;
+      var fixId     = active ? opt.off : opt.on;
+      html += '<div class="cwpa-optim-card'+(active?' cwpa-optim-active':'')+(conflict?' cwpa-optim-conflict':'')+'">';
       html += '<div class="cwpa-optim-icon">'+opt.icon+'</div>';
       html += '<div class="cwpa-optim-info"><div class="cwpa-optim-label">'+escHtml(opt.label)+'</div>';
-      html += '<div class="cwpa-optim-desc">'+escHtml(opt.desc)+'</div></div>';
+      html += '<div class="cwpa-optim-desc">'+escHtml(opt.desc)+'</div>';
+      if (conflict) html += '<div class="cwpa-optim-conflict-badge">🔒 Géré par '+escHtml(conflict)+'</div>';
+      html += '</div>';
       html += '<div class="cwpa-optim-actions">';
-      html += '<label class="cwpa-toggle"><input type="checkbox" class="cwpa-toggle-input" data-fix="'+escAttr(fixId)+'" data-id="'+escAttr(opt.id)+'" '+(active?'checked':'')+'>'+
-              '<span class="cwpa-toggle-slider"></span></label>';
-      html += '<span class="cwpa-optim-status '+(active?'active':'inactive')+'">'+(active?'Actif':'Inactif')+'</span>';
+      if (conflict) {
+        html += '<span class="cwpa-optim-status active" title="Activé par '+escHtml(conflict)+'">Actif ✓</span>';
+      } else {
+        html += '<label class="cwpa-toggle"><input type="checkbox" class="cwpa-toggle-input" data-fix="'+escAttr(fixId)+'" data-id="'+escAttr(opt.id)+'" '+(active?'checked':'')+'>'+
+                '<span class="cwpa-toggle-slider"></span></label>';
+        html += '<span class="cwpa-optim-status '+(active?'active':'inactive')+'">'+(active?'Actif':'Inactif')+'</span>';
+      }
       html += '</div></div>';
     });
     html += '</div>';

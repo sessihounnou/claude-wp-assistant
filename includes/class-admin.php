@@ -36,6 +36,11 @@ class CWPA_Admin {
 
     public function enqueue_assets( $hook ) {
         if ( $hook !== 'toplevel_page_claude-wp-assistant' ) return;
+
+        // Isoler notre page — retire les assets d'autres plugins qui peuvent causer des conflits
+        add_action( 'admin_print_styles',  [ $this, 'dequeue_conflicting_styles'  ], 9999 );
+        add_action( 'admin_print_scripts', [ $this, 'dequeue_conflicting_scripts' ], 9999 );
+
         wp_enqueue_style( 'cwpa-style', CWPA_URL . 'assets/css/admin.css', [], CWPA_VERSION );
         wp_enqueue_script( 'cwpa-script', CWPA_URL . 'assets/js/admin.js', [ 'jquery' ], CWPA_VERSION, true );
         wp_localize_script( 'cwpa-script', 'CWPA', [
@@ -46,6 +51,47 @@ class CWPA_Admin {
             'pagespeed_key'  => get_option( 'cwpa_pagespeed_key', '' ),
             'version'        => CWPA_VERSION,
         ] );
+    }
+
+    // ── Retire les styles conflictuels d'autres plugins sur notre page ────────
+    public function dequeue_conflicting_styles() {
+        $known = [
+            // Page builders & design plugins
+            'elementor-admin-css', 'elementor-common', 'elementor-editor',
+            'wp-block-editor',
+            // WooCommerce
+            'woocommerce_admin_styles', 'wc-admin-app',
+            // SEO plugins
+            'yoast-seo-adminbar', 'rank-math-common', 'aioseo-admin',
+            // Performance/cache plugins
+            'wp-rocket-admin', 'litespeed-admin',
+        ];
+        foreach ( $known as $handle ) {
+            wp_dequeue_style( $handle );
+        }
+    }
+
+    // ── Retire les scripts conflictuels d'autres plugins sur notre page ───────
+    public function dequeue_conflicting_scripts() {
+        // WP core scripts qu'on conserve
+        $keep = [
+            'jquery', 'jquery-core', 'jquery-migrate',
+            'cwpa-script',
+            // WP admin chrome essentials
+            'common', 'admin-bar', 'svg-painter', 'iris', 'wp-color-picker',
+            'shortcut', 'clipboard', 'jquery-ui-core',
+        ];
+        global $wp_scripts;
+        foreach ( array_keys( $wp_scripts->registered ?? [] ) as $handle ) {
+            if ( in_array( $handle, $keep, true ) ) continue;
+            // Ne retire que les scripts qui sont effectivement en file
+            if ( in_array( $handle, $wp_scripts->queue ?? [], true ) ) {
+                // Garde les scripts WP dont le src est dans wp-admin ou wp-includes
+                $src = $wp_scripts->registered[ $handle ]->src ?? '';
+                if ( strpos( $src, '/wp-admin/' ) !== false || strpos( $src, '/wp-includes/' ) !== false ) continue;
+                wp_dequeue_script( $handle );
+            }
+        }
     }
 
     public function render_page() {
