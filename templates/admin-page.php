@@ -107,6 +107,14 @@ $claude_key = get_option('cwpa_api_key','');
       </div>
     </div>
 
+    <!-- ── OPTIMISATION IMAGES ──────────────────────────────────────── -->
+    <div class="cwpa-section">
+      <h2 class="cwpa-section-title">Optimisation des images</h2>
+      <div id="cwpa-imgoptim-panel">
+        <div class="cwpa-loading-inline"><div class="cwpa-spinner-sm"></div> Chargement...</div>
+      </div>
+    </div>
+
     <!-- ── WEBP ──────────────────────────────────────────────────────── -->
     <div class="cwpa-section">
       <h2 class="cwpa-section-title">Compression WebP</h2>

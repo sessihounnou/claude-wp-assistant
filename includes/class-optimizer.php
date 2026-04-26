@@ -14,6 +14,7 @@ class CWPA_Optimizer {
         'page_cache'              => [ 'wp-rocket/wp-rocket.php', 'litespeed-cache/litespeed-cache.php', 'w3-total-cache/w3-total-cache.php', 'wp-super-cache/wp-cache.php', 'comet-cache/comet-cache.php' ],
         'disable_jquery_migrate'  => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php' ],
         'font_display_swap'       => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php' ],
+        'css_minify'              => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php' ],
     ];
 
     public static function has_conflict( $feature ) {
@@ -77,6 +78,26 @@ class CWPA_Optimizer {
         if ( get_option( 'cwpa_save_data' ) ) {
             add_action( 'wp_head', [ __CLASS__, 'handle_save_data_meta' ], 1 );
             add_filter( 'the_content', [ __CLASS__, 'save_data_images' ] );
+        }
+
+        // ── CSS minify (inline <style> blocks) ───────────────────────────────
+        if ( get_option( 'cwpa_css_minify' ) && ! is_admin() && ! self::has_conflict( 'html_minify' ) ) {
+            add_action( 'template_redirect', [ __CLASS__, 'start_css_minify' ], 998 );
+        }
+
+        // ── Image upload optimizations ───────────────────────────────────────
+        if ( get_option( 'cwpa_jpeg_quality' ) ) {
+            add_filter( 'jpeg_quality',           [ __CLASS__, 'set_jpeg_quality' ] );
+            add_filter( 'wp_editor_set_quality',  [ __CLASS__, 'set_jpeg_quality' ] );
+        }
+        if ( get_option( 'cwpa_strip_exif' ) ) {
+            add_filter( 'wp_handle_upload', [ __CLASS__, 'strip_exif_on_upload' ] );
+        }
+        if ( get_option( 'cwpa_limit_img_size' ) ) {
+            add_filter( 'wp_handle_upload', [ __CLASS__, 'limit_upload_dimensions' ] );
+        }
+        if ( get_option( 'cwpa_img_decode_async' ) ) {
+            add_filter( 'the_content', [ __CLASS__, 'add_decode_async' ] );
         }
 
         // ── Fallbacks PHP quand .htaccess n'est pas accessible ──────────────
@@ -218,6 +239,80 @@ class CWPA_Optimizer {
         }
     }
 
+    // ── CSS minify (inline <style> blocks via output buffer) ─────────────────
+    public static function start_css_minify() {
+        ob_start( [ __CLASS__, 'minify_css_in_html' ] );
+    }
+
+    public static function minify_css_in_html( $buffer ) {
+        if ( strlen( $buffer ) < 255 ) return $buffer;
+        return preg_replace_callback( '/<style([^>]*)>(.*?)<\/style>/si', function( $m ) {
+            $css = $m[2];
+            // Strip CSS comments (keep IE conditionals)
+            $css = preg_replace( '/\/\*(?!!)[^*]*\*+([^\/][^*]*\*+)*\//', '', $css );
+            // Collapse whitespace
+            $css = preg_replace( '/\s+/', ' ', $css );
+            // Remove spaces around CSS syntax chars
+            $css = preg_replace( '/\s*([:;{},>+~])\s*/', '$1', $css );
+            // Remove trailing semicolons before closing brace
+            $css = str_replace( ';}', '}', $css );
+            return '<style' . $m[1] . '>' . trim( $css ) . '</style>';
+        }, $buffer );
+    }
+
+    // ── JPEG quality ─────────────────────────────────────────────────────────
+    public static function set_jpeg_quality() {
+        return (int) get_option( 'cwpa_jpeg_quality_value', 80 );
+    }
+
+    // ── Strip EXIF metadata on upload ────────────────────────────────────────
+    public static function strip_exif_on_upload( $file ) {
+        if ( empty( $file['type'] ) || strpos( $file['type'], 'image/' ) !== 0 ) return $file;
+        $path = $file['file'];
+
+        if ( class_exists( 'Imagick' ) ) {
+            try {
+                $img = new Imagick( $path );
+                $img->stripImage();
+                $img->writeImage( $path );
+                $img->destroy();
+            } catch ( Exception $e ) { /* silent */ }
+        } elseif ( extension_loaded( 'gd' ) && $file['type'] === 'image/jpeg' ) {
+            // GD re-save naturally strips EXIF
+            $im = @imagecreatefromjpeg( $path );
+            if ( $im ) {
+                imagejpeg( $im, $path, get_option( 'cwpa_jpeg_quality_value', 80 ) );
+                imagedestroy( $im );
+            }
+        }
+        return $file;
+    }
+
+    // ── Limit upload max dimensions ──────────────────────────────────────────
+    public static function limit_upload_dimensions( $file ) {
+        if ( empty( $file['type'] ) || strpos( $file['type'], 'image/' ) !== 0 ) return $file;
+        $max  = (int) get_option( 'cwpa_max_img_dimension', 2048 );
+        $path = $file['file'];
+        list( $w, $h ) = @getimagesize( $path ) ?: [ 0, 0 ];
+        if ( $w > $max || $h > $max ) {
+            $editor = wp_get_image_editor( $path );
+            if ( ! is_wp_error( $editor ) ) {
+                $editor->resize( $max, $max, false );
+                $editor->save( $path );
+            }
+        }
+        return $file;
+    }
+
+    // ── Async image decoding ─────────────────────────────────────────────────
+    // Frees the main thread on slow CPUs by letting images decode off-thread
+    public static function add_decode_async( $content ) {
+        if ( is_admin() ) return $content;
+        return preg_replace_callback( '/<img(?![^>]*decoding=)([^>]*)>/i', function( $m ) {
+            return '<img decoding="async"' . $m[1] . '>';
+        }, $content );
+    }
+
     // ── Font-display: swap ───────────────────────────────────────────────────
     // Append display=swap to Google Fonts stylesheet URLs
     public static function add_font_display_swap( $src, $handle ) {
@@ -310,7 +405,7 @@ class CWPA_Optimizer {
 
     // ── Status ───────────────────────────────────────────────────────────────
     public static function get_status() {
-        $features_with_conflict = [ 'gzip', 'browser_cache', 'defer_js', 'lazy_load', 'html_minify', 'remove_query_strings', 'page_cache', 'disable_jquery_migrate', 'font_display_swap' ];
+        $features_with_conflict = [ 'gzip', 'browser_cache', 'defer_js', 'lazy_load', 'html_minify', 'remove_query_strings', 'page_cache', 'disable_jquery_migrate', 'font_display_swap', 'css_minify' ];
         $conflicts = [];
         foreach ( $features_with_conflict as $f ) {
             $name = self::get_conflict_name( $f );
@@ -344,6 +439,14 @@ class CWPA_Optimizer {
             'disable_jquery_migrate'  => (bool) get_option( 'cwpa_disable_jquery_migrate' ),
             'preload_key_assets'      => (bool) get_option( 'cwpa_preload_key_assets' ),
             'save_data'               => (bool) get_option( 'cwpa_save_data' ),
+            'css_minify'              => (bool) get_option( 'cwpa_css_minify' ),
+            // Image optimizations
+            'jpeg_quality'            => (bool) get_option( 'cwpa_jpeg_quality' ),
+            'jpeg_quality_value'      => (int) get_option( 'cwpa_jpeg_quality_value', 80 ),
+            'strip_exif'              => (bool) get_option( 'cwpa_strip_exif' ),
+            'limit_img_size'          => (bool) get_option( 'cwpa_limit_img_size' ),
+            'max_img_dimension'       => (int) get_option( 'cwpa_max_img_dimension', 2048 ),
+            'img_decode_async'        => (bool) get_option( 'cwpa_img_decode_async' ),
             'conflicts'               => $conflicts,
         ];
     }

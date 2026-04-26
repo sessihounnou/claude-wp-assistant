@@ -463,6 +463,7 @@
     { id:'dns_prefetch',         label:'DNS Prefetch',           desc:'Préconnecte aux domaines tiers (fonts, CDN)',     on:'enable_dns_prefetch',   off:'disable_dns_prefetch',  icon:'📡' },
     { id:'webp_serving',            label:'Servir WebP (.htaccess)',   desc:'Redirige auto vers .webp si disponible',                on:'enable_webp_serving',         off:'disable_webp_serving',        icon:'🌅' },
     { id:'webp_auto',               label:'Auto-convert WebP',         desc:'Convertit les nouvelles images à l\'upload',            on:'enable_webp_auto',            off:'disable_webp_auto',           icon:'⚙️' },
+    { id:'css_minify',              label:'Minification CSS',          desc:'Compresse les blocs <style> inline — supprime commentaires et espaces superflus',       on:'enable_css_minify',           off:'disable_css_minify',          icon:'🎨' },
     // ── 4G / Mobile ──────────────────────────────────────────────────────────
     { id:'font_display_swap',       label:'Font-display swap',         desc:'Ajoute display=swap aux Google Fonts — évite le FOIT',  on:'enable_font_display_swap',    off:'disable_font_display_swap',   icon:'🔤' },
     { id:'remove_wp_bloat',         label:'Supprimer le bloat WP',     desc:'Retire generator, rsd_link, wlwmanifest du <head>',     on:'enable_remove_wp_bloat',      off:'disable_remove_wp_bloat',     icon:'🧹' },
@@ -915,10 +916,92 @@
   });
 
   // ══════════════════════════════════════════════════════════
+  // IMAGE OPTIMIZATION SECTION
+  // ══════════════════════════════════════════════════════════
+
+  // Toggleable image features (reuse optimizer status AJAX)
+  var imageOptimDefs = [
+    { id:'lazy_load',         label:'Lazy load images',           desc:'Charge les images hors-écran en différé (loading="lazy")',                    on:'enable_lazy_load',         off:'disable_lazy_load',         icon:'🖼' },
+    { id:'img_decode_async',  label:'Décodage asynchrone',        desc:'Ajoute decoding="async" — libère le thread principal sur appareils lents',    on:'enable_img_decode_async',  off:'disable_img_decode_async',  icon:'⚡' },
+    { id:'jpeg_quality',      label:'Qualité JPEG réduite (80%)', desc:'Réduit la qualité JPEG à 80% lors de l\'upload — ~20% plus léger, invisible', on:'enable_jpeg_quality',      off:'disable_jpeg_quality',      icon:'🎯' },
+    { id:'strip_exif',        label:'Supprimer EXIF',             desc:'Retire GPS, données appareil et auteur des images uploadées',                  on:'enable_strip_exif',        off:'disable_strip_exif',        icon:'🔒' },
+    { id:'limit_img_size',    label:'Limiter taille upload',      desc:'Redimensionne à 2048px max lors de l\'upload — économise du disque et bandwidth', on:'enable_limit_img_size', off:'disable_limit_img_size',    icon:'📐' },
+    { id:'webp_auto',         label:'Conversion WebP auto',       desc:'Convertit chaque image uploadée en WebP (30-80% plus légère que JPEG/PNG)',    on:'enable_webp_auto',         off:'disable_webp_auto',         icon:'🌅' },
+    { id:'webp_serving',      label:'Servir WebP navigateurs',    desc:'Envoie automatiquement .webp aux navigateurs compatibles via .htaccess',       on:'enable_webp_serving',      off:'disable_webp_serving',      icon:'🌐' },
+  ];
+
+  // Informational cards — what exists but needs external tools or is WP core
+  var imageInfoCards = [
+    { icon:'📱', label:'Images responsives (srcset)',   status:'core',     statusLabel:'WordPress Core', desc:'WordPress génère automatiquement les attributs srcset/sizes pour servir la bonne résolution selon l\'écran. Déjà actif.' },
+    { icon:'📏', label:'Attributs width/height',        status:'core',     statusLabel:'WordPress Core', desc:'WordPress ajoute width/height aux images insérées via l\'éditeur. Prévient le décalage de mise en page (CLS).' },
+    { icon:'🔮', label:'Format AVIF',                   status:'plugin',   statusLabel:'Plugin requis',  desc:'Successeur du WebP — 50% plus compact mais support navigateur partiel. Nécessite ShortPixel Adaptive Images ou Imagify.' },
+    { icon:'🗜', label:'Compression avancée (pertes)',  status:'plugin',   statusLabel:'Plugin requis',  desc:'Réduction de poids configurable au-delà de 80%. Imagify, ShortPixel ou Smush offrent une compression avec perte professionnelle.' },
+    { icon:'🌍', label:'CDN d\'images',                 status:'external', statusLabel:'Service externe', desc:'Cloudflare Images (gratuit), BunnyCDN, Cloudinary ou imgix servent vos images depuis des serveurs proches du visiteur.' },
+    { icon:'✨', label:'Optimisation SVG',              status:'manual',   statusLabel:'Manuel',         desc:'Compressez vos SVG avec SVGO avant upload (outil en ligne : jakearchibald.github.io/svgomg). Gain fréquent de 30-70%.' },
+    { icon:'🖼', label:'Image sitemap',                 status:'plugin',   statusLabel:'Plugin requis',  desc:'Un sitemap dédié aux images aide Google à les indexer. Yoast SEO, Rank Math ou XML Sitemap Generator le génèrent automatiquement.' },
+    { icon:'📸', label:'Art direction (picture)',       status:'manual',   statusLabel:'Développeur',    desc:'Utilisez <picture> avec des sources différentes selon la taille d\'écran pour afficher des images cadrées différemment sur mobile.' },
+  ];
+
+  function loadImageOptimSection() {
+    $.post(CWPA.ajax_url, { action:'cwpa_optimizer_status', nonce:CWPA.nonce })
+      .done(function(res){
+        if (!res || !res.success) return;
+        renderImageOptim(res.data.status);
+      });
+  }
+
+  function renderImageOptim(status) {
+    var conflicts = status.conflicts || {};
+    var html = '';
+
+    // ── Toggle cards ──
+    html += '<div class="cwpa-imgoptim-grid">';
+    imageOptimDefs.forEach(function(opt){
+      var active   = status[opt.id] || false;
+      var conflict = conflicts[opt.id] || null;
+      var fixId    = active ? opt.off : opt.on;
+      html += '<div class="cwpa-optim-card'+(active?' cwpa-optim-active':'')+(conflict?' cwpa-optim-conflict':'')+'">';
+      html += '<div class="cwpa-optim-icon">'+opt.icon+'</div>';
+      html += '<div class="cwpa-optim-info"><div class="cwpa-optim-label">'+escHtml(opt.label)+'</div>';
+      html += '<div class="cwpa-optim-desc">'+escHtml(opt.desc)+'</div>';
+      if (conflict) html += '<div class="cwpa-optim-conflict-badge">🔒 Géré par '+escHtml(conflict)+'</div>';
+      html += '</div>';
+      html += '<div class="cwpa-optim-actions">';
+      if (conflict) {
+        html += '<span class="cwpa-optim-status active">Actif ✓</span>';
+      } else {
+        html += '<label class="cwpa-toggle"><input type="checkbox" class="cwpa-toggle-input" data-fix="'+escAttr(fixId)+'" data-id="'+escAttr(opt.id)+'" '+(active?'checked':'')+'><span class="cwpa-toggle-slider"></span></label>';
+        html += '<span class="cwpa-optim-status '+(active?'active':'inactive')+'">'+(active?'Actif':'Inactif')+'</span>';
+      }
+      html += '</div></div>';
+    });
+    html += '</div>';
+
+    // ── Info cards ──
+    html += '<h3 class="cwpa-imgoptim-subtitle">Autres leviers d\'optimisation</h3>';
+    html += '<div class="cwpa-imginfo-grid">';
+    imageInfoCards.forEach(function(card){
+      html += '<div class="cwpa-imginfo-card cwpa-imginfo-'+escAttr(card.status)+'">';
+      html += '<div class="cwpa-imginfo-head">';
+      html += '<span class="cwpa-imginfo-icon">'+card.icon+'</span>';
+      html += '<div>';
+      html += '<div class="cwpa-imginfo-label">'+escHtml(card.label)+'</div>';
+      html += '<span class="cwpa-imginfo-badge cwpa-imginfo-badge-'+escAttr(card.status)+'">'+escHtml(card.statusLabel)+'</span>';
+      html += '</div></div>';
+      html += '<div class="cwpa-imginfo-desc">'+escHtml(card.desc)+'</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    $('#cwpa-imgoptim-panel').html(html);
+  }
+
+  // ══════════════════════════════════════════════════════════
   // INIT — optimizer + WebP sont indépendants de l'API Claude
   // ══════════════════════════════════════════════════════════
   loadOptimizerStatus();
   loadWebPStats();
   renderSSHActions();
+  loadImageOptimSection();
 
 })(jQuery);

@@ -61,6 +61,20 @@ class CWPA_Fixer {
             'enable_lcp'                => [ $this, 'toggle_option_on',  'cwpa_lcp_enabled' ],
             'disable_lcp'               => [ $this, 'toggle_option_off', 'cwpa_lcp_enabled' ],
 
+            // ── CSS / JS minification ─────────────────────────────────────────
+            'enable_css_minify'             => [ $this, 'toggle_option_on',  'cwpa_css_minify' ],
+            'disable_css_minify'            => [ $this, 'toggle_option_off', 'cwpa_css_minify' ],
+
+            // ── Image optimizations ────────────────────────────────────────────
+            'enable_jpeg_quality'           => [ $this, 'toggle_option_on',  'cwpa_jpeg_quality' ],
+            'disable_jpeg_quality'          => [ $this, 'toggle_option_off', 'cwpa_jpeg_quality' ],
+            'enable_strip_exif'             => [ $this, 'toggle_option_on',  'cwpa_strip_exif' ],
+            'disable_strip_exif'            => [ $this, 'toggle_option_off', 'cwpa_strip_exif' ],
+            'enable_limit_img_size'         => [ $this, 'toggle_option_on',  'cwpa_limit_img_size' ],
+            'disable_limit_img_size'        => [ $this, 'toggle_option_off', 'cwpa_limit_img_size' ],
+            'enable_img_decode_async'       => [ $this, 'toggle_option_on',  'cwpa_img_decode_async' ],
+            'disable_img_decode_async'      => [ $this, 'toggle_option_off', 'cwpa_img_decode_async' ],
+
             // ── 4G / Mobile optimizations ─────────────────────────────────────
             'enable_font_display_swap'      => [ $this, 'toggle_option_on',  'cwpa_font_display_swap' ],
             'disable_font_display_swap'     => [ $this, 'toggle_option_off', 'cwpa_font_display_swap' ],
@@ -292,6 +306,11 @@ class CWPA_Fixer {
             'cwpa_dns_prefetch'         => 'DNS prefetch activé.',
             'cwpa_webp_auto'            => 'Conversion WebP automatique à l\'upload activée.',
             'cwpa_lcp_enabled'               => 'Optimisation LCP activée (preload image, fetchpriority, preconnect).',
+            'cwpa_css_minify'                => 'Minification CSS activée — les blocs <style> du HTML sont compressés.',
+            'cwpa_jpeg_quality'              => 'Qualité JPEG réduite à 80% pour les nouvelles images uploadées.',
+            'cwpa_strip_exif'                => 'Suppression des métadonnées EXIF activée pour les nouveaux uploads.',
+            'cwpa_limit_img_size'            => 'Limitation de la taille des images activée (max 2048px).',
+            'cwpa_img_decode_async'          => 'Décodage asynchrone des images activé (decoding="async").',
             'cwpa_font_display_swap'         => 'Font-display swap activé — les polices Google Fonts ne bloquent plus le rendu.',
             'cwpa_remove_wp_bloat'           => 'Balises inutiles supprimées du <head> (generator, rsd_link, wlwmanifest…).',
             'cwpa_disable_jquery_migrate'    => 'jQuery Migrate désactivé (~10 Ko économisés).',
