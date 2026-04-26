@@ -11,12 +11,14 @@
           <span>by Biristools · Powered by Claude AI</span>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:12px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <?php $key = get_option('cwpa_api_key',''); ?>
         <span class="cwpa-badge <?php echo $key ? 'cwpa-badge-ok' : 'cwpa-badge-warn'; ?>">
           <?php echo $key ? '● Claude API connectée' : '● Claude API non configurée'; ?>
         </span>
         <span class="cwpa-badge cwpa-badge-info" id="cwpa-version-badge">v<?php echo CWPA_VERSION; ?></span>
+        <button class="cwpa-btn cwpa-btn-ghost cwpa-btn-sm" id="cwpa-check-update" title="Vérifier les mises à jour depuis GitHub">↻ Vérifier les mises à jour</button>
+        <span id="cwpa-update-result" style="font-size:12px;"></span>
       </div>
     </div>
   </div>

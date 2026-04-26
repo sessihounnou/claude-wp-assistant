@@ -82,6 +82,7 @@
 .cwpa-btn-fix:disabled { opacity:.5; cursor:not-allowed; }
 .cwpa-btn-ghost { background:transparent; color:var(--cwpa-text2); border:1px solid var(--cwpa-border); font-size:12px; padding:7px 14px; }
 .cwpa-btn-ghost:hover { border-color:var(--cwpa-accent); color:var(--cwpa-accent); }
+.cwpa-btn-sm { font-size:11px; padding:5px 12px; }
 
 /* ── Results ─────────────────────────────────────────────── */
 .cwpa-results-header { background:var(--cwpa-surface); border:1px solid var(--cwpa-border); border-radius:var(--cwpa-radius) var(--cwpa-radius) 0 0; padding:20px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }

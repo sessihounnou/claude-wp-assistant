@@ -7,6 +7,32 @@
   var scanTypes  = ['php_errors','performance','plugins','security','seo'];
 
   // ══════════════════════════════════════════════════════════
+  // UPDATE CHECK
+  // ══════════════════════════════════════════════════════════
+  $('#cwpa-check-update').on('click', function(){
+    var $btn = $(this).prop('disabled', true).text('Vérification...');
+    var $res = $('#cwpa-update-result');
+    $res.text('').css('color','');
+
+    $.post(CWPA.ajax_url, { action:'cwpa_force_update_check', nonce:CWPA.nonce }, function(res){
+      $btn.prop('disabled', false).text('↻ Vérifier les mises à jour');
+      if (!res.success) {
+        $res.text('⚠ ' + res.data).css('color','var(--cwpa-warning)');
+        return;
+      }
+      var d = res.data;
+      if (d.has_update) {
+        $res.html('🚀 v'+d.latest+' disponible ! <a href="'+d.update_url+'" style="color:var(--cwpa-accent)">Mettre à jour →</a>').css('color','var(--cwpa-ok)');
+      } else {
+        $res.text('✓ v'+d.current+' — Plugin à jour.').css('color','var(--cwpa-text2)');
+      }
+    }).fail(function(){
+      $btn.prop('disabled', false).text('↻ Vérifier les mises à jour');
+      $res.text('⚠ Erreur réseau.').css('color','var(--cwpa-critical)');
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════
   // API KEY
   // ══════════════════════════════════════════════════════════
   $('#cwpa-save-key').on('click', function(){
