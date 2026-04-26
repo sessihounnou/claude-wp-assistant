@@ -20,6 +20,7 @@ class CWPA_Admin {
         add_action( 'wp_ajax_cwpa_webp_stats',        [ $this, 'ajax_webp_stats' ] );
         add_action( 'wp_ajax_cwpa_webp_convert',      [ $this, 'ajax_webp_convert' ] );
         add_action( 'wp_ajax_cwpa_cache_clear',       [ $this, 'ajax_cache_clear' ] );
+        add_action( 'wp_ajax_cwpa_diagnostics',       [ $this, 'ajax_diagnostics' ] );
     }
 
     public function register_menu() {
@@ -227,6 +228,114 @@ class CWPA_Admin {
 
         if ( is_wp_error( $response ) ) wp_send_json_error( $response->get_error_message() );
         wp_send_json_success( [ 'reply' => $response ] );
+    }
+
+    // ── Diagnostics ───────────────────────────────────────────────────────────
+    public function ajax_diagnostics() {
+        check_ajax_referer( 'cwpa_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
+
+        $checks = [];
+
+        // ── PHP ──────────────────────────────────────────────────────────────
+        $checks[] = $this->diag( 'PHP ' . PHP_VERSION, version_compare( PHP_VERSION, '7.4', '>=' ), 'Version PHP correcte', 'PHP 7.4+ requis' );
+        $checks[] = $this->diag( 'Mémoire : ' . ini_get('memory_limit'), true, '', '', 'info' );
+        $checks[] = $this->diag( 'max_execution_time : ' . ini_get('max_execution_time') . 's', true, '', '', 'info' );
+
+        // ── Serveur ──────────────────────────────────────────────────────────
+        $server_soft = $_SERVER['SERVER_SOFTWARE'] ?? 'inconnu';
+        $is_apache   = stripos( $server_soft, 'apache' ) !== false || function_exists( 'apache_get_version' );
+        $is_nginx    = stripos( $server_soft, 'nginx' ) !== false;
+        $server_label = $is_apache ? 'Apache' : ( $is_nginx ? 'Nginx' : $server_soft );
+        $checks[] = $this->diag(
+            'Serveur : ' . $server_label,
+            $is_apache,
+            'Apache détecté — .htaccess compatible',
+            $is_nginx ? 'Nginx détecté — GZIP/Cache navigateur et WebP via .htaccess ne fonctionneront pas (configurer dans nginx.conf)' : 'Serveur non reconnu — les règles .htaccess peuvent ne pas s\'appliquer',
+            $is_apache ? 'ok' : 'warn'
+        );
+
+        // ── .htaccess ────────────────────────────────────────────────────────
+        $htaccess = ABSPATH . '.htaccess';
+        $ht_exists   = file_exists( $htaccess );
+        $ht_writable = $ht_exists && is_writable( $htaccess );
+        $checks[] = $this->diag( '.htaccess ' . ( $ht_exists ? 'présent' : 'absent' ), $ht_exists, '.htaccess trouvé', '.htaccess absent — créez-le à la racine WordPress' );
+        $checks[] = $this->diag( '.htaccess ' . ( $ht_writable ? 'accessible en écriture' : 'lecture seule' ), $ht_writable, '.htaccess modifiable', 'Droits insuffisants sur .htaccess — chmod 644 ou contactez votre hébergeur' );
+
+        // ── Cache dir ────────────────────────────────────────────────────────
+        $cache_dir  = WP_CONTENT_DIR . '/cache/';
+        $cwpa_cache = WP_CONTENT_DIR . '/cache/cwpa-pages/';
+        $checks[] = $this->diag( 'wp-content/cache/ ' . ( is_writable( $cache_dir ) ? 'accessible' : 'inaccessible' ), is_writable( $cache_dir ), 'Répertoire cache accessible', 'wp-content/cache/ non accessible en écriture — le cache de pages ne fonctionnera pas' );
+
+        // ── GD / WebP ────────────────────────────────────────────────────────
+        $gd_loaded   = extension_loaded( 'gd' );
+        $gd_webp     = $gd_loaded && function_exists( 'imagewebp' );
+        $checks[] = $this->diag( 'Extension GD ' . ( $gd_loaded ? 'chargée' : 'absente' ), $gd_loaded, 'GD disponible', 'GD non disponible — demandez à votre hébergeur de l\'activer' );
+        $checks[] = $this->diag( 'GD imagewebp() ' . ( $gd_webp ? 'disponible' : 'indisponible' ), $gd_webp, 'Conversion WebP via GD possible', 'imagewebp() absent — GD compilé sans support WebP (fréquent sur certains hébergeurs mutualisés)' );
+
+        // ── Imagick ──────────────────────────────────────────────────────────
+        $im_loaded  = extension_loaded( 'imagick' );
+        $im_webp    = false;
+        if ( $im_loaded ) {
+            try {
+                $im      = new Imagick();
+                $im_webp = in_array( 'WEBP', $im->queryFormats(), true );
+            } catch ( Exception $e ) {}
+        }
+        $checks[] = $this->diag( 'Imagick ' . ( $im_loaded ? 'chargé' : 'absent' ), $im_loaded, 'Imagick disponible', 'Imagick non chargé', $im_loaded ? 'ok' : 'info' );
+        if ( $im_loaded ) {
+            $checks[] = $this->diag( 'Imagick WebP ' . ( $im_webp ? 'supporté' : 'non supporté' ), $im_webp, 'Conversion WebP via Imagick possible', 'Imagick chargé mais WebP non compilé', $im_webp ? 'ok' : 'warn' );
+        }
+
+        // ── Résumé WebP ──────────────────────────────────────────────────────
+        $webp_ok = $gd_webp || $im_webp;
+        $checks[] = $this->diag(
+            'Compression WebP : ' . ( $webp_ok ? 'opérationnelle' : 'impossible' ),
+            $webp_ok,
+            'Au moins un driver WebP disponible (' . ( $gd_webp ? 'GD' : 'Imagick' ) . ')',
+            'Ni GD+imagewebp ni Imagick avec WebP — contactez votre hébergeur',
+            $webp_ok ? 'ok' : 'critical'
+        );
+
+        // ── WordPress ────────────────────────────────────────────────────────
+        $checks[] = $this->diag( 'WordPress ' . get_bloginfo('version'), version_compare( get_bloginfo('version'), '5.8', '>=' ), 'Version WordPress compatible', 'WordPress 5.8+ recommandé' );
+        $checks[] = $this->diag( 'admin-ajax.php accessible', true, 'AJAX WordPress disponible (vous lisez cette réponse)', '', 'ok' );
+
+        // ── Plugins conflictuels ─────────────────────────────────────────────
+        $conflict_plugins = [
+            'WP Rocket'       => 'wp-rocket/wp-rocket.php',
+            'LiteSpeed Cache' => 'litespeed-cache/litespeed-cache.php',
+            'W3 Total Cache'  => 'w3-total-cache/w3-total-cache.php',
+            'WP Super Cache'  => 'wp-super-cache/wp-cache.php',
+            'Autoptimize'     => 'autoptimize/autoptimize.php',
+        ];
+        if ( ! function_exists( 'is_plugin_active' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        $active_conflicts = [];
+        foreach ( $conflict_plugins as $name => $file ) {
+            if ( is_plugin_active( $file ) ) $active_conflicts[] = $name;
+        }
+        if ( $active_conflicts ) {
+            $checks[] = $this->diag(
+                'Plugins d\'optimisation actifs : ' . implode( ', ', $active_conflicts ),
+                true,
+                'Détectés et gérés — les fonctionnalités en doublon sont désactivées automatiquement',
+                '',
+                'info'
+            );
+        }
+
+        wp_send_json_success( $checks );
+    }
+
+    private function diag( $label, $ok, $ok_msg = '', $fail_msg = '', $force_status = '' ) {
+        $status = $force_status ?: ( $ok ? 'ok' : 'critical' );
+        return [
+            'label'   => $label,
+            'status'  => $status,
+            'message' => $ok ? $ok_msg : $fail_msg,
+        ];
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────

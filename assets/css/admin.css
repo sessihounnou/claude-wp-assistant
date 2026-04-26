@@ -186,6 +186,26 @@
 .cwpa-cwv-item.bad    .cwpa-cwv-value { color:var(--cwpa-critical); }
 .cwpa-cwv-label { font-size:11px; color:var(--cwpa-text2); }
 
+/* ── Diagnostic ─────────────────────────────────────────── */
+.cwpa-diag-card { padding:20px 24px; }
+.cwpa-diag-intro { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; font-size:13px; color:var(--cwpa-text2); }
+.cwpa-diag-list { display:flex; flex-direction:column; gap:6px; }
+.cwpa-diag-item { display:flex; align-items:flex-start; gap:10px; padding:8px 12px; border-radius:8px; font-size:13px; }
+.cwpa-diag-item.cwpa-diag-ok       { background:rgba(77,222,148,.07); border:1px solid rgba(77,222,148,.2); }
+.cwpa-diag-item.cwpa-diag-warn     { background:rgba(255,179,71,.07); border:1px solid rgba(255,179,71,.2); }
+.cwpa-diag-item.cwpa-diag-critical { background:rgba(255,77,109,.07); border:1px solid rgba(255,77,109,.2); }
+.cwpa-diag-item.cwpa-diag-info     { background:rgba(77,166,255,.07); border:1px solid rgba(77,166,255,.2); }
+.cwpa-diag-icon { flex-shrink:0; font-weight:700; width:16px; text-align:center; margin-top:1px; }
+.cwpa-diag-item.cwpa-diag-ok       .cwpa-diag-icon { color:var(--cwpa-ok); }
+.cwpa-diag-item.cwpa-diag-warn     .cwpa-diag-icon { color:var(--cwpa-warning); }
+.cwpa-diag-item.cwpa-diag-critical .cwpa-diag-icon { color:var(--cwpa-critical); }
+.cwpa-diag-item.cwpa-diag-info     .cwpa-diag-icon { color:var(--cwpa-info); }
+.cwpa-diag-text { display:flex; flex-direction:column; gap:2px; }
+.cwpa-diag-label { font-weight:500; color:var(--cwpa-text); }
+.cwpa-diag-msg { font-size:12px; color:var(--cwpa-text2); line-height:1.4; }
+.cwpa-diag-item.cwpa-diag-critical .cwpa-diag-msg { color:var(--cwpa-critical); }
+.cwpa-diag-item.cwpa-diag-warn     .cwpa-diag-msg { color:var(--cwpa-warning); }
+
 /* ── Optimizer ───────────────────────────────────────────── */
 .cwpa-optim-loading { color:var(--cwpa-text2); font-size:13px; padding:12px 0; }
 .cwpa-optim-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }

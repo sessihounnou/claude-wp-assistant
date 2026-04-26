@@ -198,6 +198,38 @@
   });
 
   // ══════════════════════════════════════════════════════════
+  // DIAGNOSTIC
+  // ══════════════════════════════════════════════════════════
+  $('#cwpa-run-diag').on('click', function(){
+    var $btn = $(this).prop('disabled', true).text('Analyse...');
+    var $res = $('#cwpa-diag-results').show().html('<div class="cwpa-loading-inline"><div class="cwpa-spinner-sm"></div> Vérification en cours...</div>');
+
+    $.post(CWPA.ajax_url, { action:'cwpa_diagnostics', nonce:CWPA.nonce }, function(res){
+      $btn.prop('disabled', false).text('🔍 Relancer');
+      if (!res.success) { $res.html('<div class="cwpa-ajax-error">Erreur diagnostic</div>'); return; }
+      renderDiag(res.data);
+    }).fail(function(xhr){
+      $btn.prop('disabled', false).text('🔍 Relancer');
+      $res.html('<div class="cwpa-ajax-error">⚠ Erreur réseau HTTP ' + xhr.status + '</div>');
+    });
+  });
+
+  function renderDiag(checks){
+    var icons = { ok:'✓', warn:'⚠', critical:'✗', info:'ℹ' };
+    var html = '<div class="cwpa-diag-list">';
+    checks.forEach(function(c){
+      html += '<div class="cwpa-diag-item cwpa-diag-'+c.status+'">';
+      html += '<span class="cwpa-diag-icon">'+icons[c.status]+'</span>';
+      html += '<div class="cwpa-diag-text">';
+      html += '<span class="cwpa-diag-label">'+escHtml(c.label)+'</span>';
+      if (c.message) html += '<span class="cwpa-diag-msg">'+escHtml(c.message)+'</span>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    $('#cwpa-diag-results').html(html);
+  }
+
+  // ══════════════════════════════════════════════════════════
   // PAGESPEED
   // ══════════════════════════════════════════════════════════
   $('#cwpa-ps-save-key').on('click', function(){

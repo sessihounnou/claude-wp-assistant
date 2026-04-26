@@ -55,6 +55,18 @@ $claude_key = get_option('cwpa_api_key','');
       <div id="cwpa-pagespeed-results" style="display:none;"></div>
     </div>
 
+    <!-- ── DIAGNOSTIC ──────────────────────────────────────────────────── -->
+    <div class="cwpa-section">
+      <h2 class="cwpa-section-title">Diagnostic serveur</h2>
+      <div class="cwpa-card cwpa-diag-card">
+        <div class="cwpa-diag-intro">
+          <span>Vérifie la compatibilité de ce serveur : PHP, GD/WebP, Imagick, .htaccess, permissions, type de serveur.</span>
+          <button class="cwpa-btn cwpa-btn-ghost cwpa-btn-sm" id="cwpa-run-diag">🔍 Lancer le diagnostic</button>
+        </div>
+        <div id="cwpa-diag-results" style="display:none;margin-top:16px;"></div>
+      </div>
+    </div>
+
     <!-- ── OPTIMISATIONS ─────────────────────────────────────────────── -->
     <div class="cwpa-section">
       <h2 class="cwpa-section-title">Optimisations Performance</h2>
