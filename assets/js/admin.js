@@ -1,6 +1,13 @@
 (function($){
   'use strict';
 
+  // Diagnostic console — vérifie que le script charge bien
+  if (typeof CWPA === 'undefined') {
+    console.error('[CWPA] La variable CWPA n\'est pas définie. wp_localize_script n\'a pas fonctionné.');
+    return;
+  }
+  console.log('[CWPA] v' + (CWPA.version || '?') + ' chargé — ajax_url: ' + CWPA.ajax_url);
+
   var chatHistory = [];
   var lastScanData = {};
   var scanLabels = { php_errors:'Erreurs PHP', performance:'Performance DB', plugins:'Plugins', security:'Sécurité', seo:'SEO' };
@@ -296,18 +303,23 @@
   ];
 
   function loadOptimizerStatus(){
-    $.post(CWPA.ajax_url, { action:'cwpa_optimizer_status', nonce:CWPA.nonce }, function(res){
-      if (!res.success) {
-        $('#cwpa-optim-grid').html('<div class="cwpa-ajax-error">⚠ Erreur chargement : ' + escHtml(res.data || 'réponse inattendue') + '</div>');
-        return;
-      }
-      renderOptimizer(res.data.status, res.data.cache);
-    }).fail(function(xhr){
-      var msg = xhr.status === 400 ? 'Nonce invalide (rechargez la page)' :
-                xhr.status === 0   ? 'Serveur injoignable' :
-                'HTTP ' + xhr.status;
-      $('#cwpa-optim-grid').html('<div class="cwpa-ajax-error">⚠ Erreur AJAX : ' + msg + '</div>');
-    });
+    console.log('[CWPA] Chargement statut optimisations...');
+    $.post(CWPA.ajax_url, { action:'cwpa_optimizer_status', nonce:CWPA.nonce })
+      .done(function(res){
+        console.log('[CWPA] Réponse optimizer_status:', res);
+        if (!res || !res.success) {
+          var err = (res && res.data) ? res.data : 'Réponse invalide (voir console)';
+          $('#cwpa-optim-grid').html('<div class="cwpa-ajax-error">⚠ Erreur : ' + escHtml(String(err)) + '</div>');
+          return;
+        }
+        renderOptimizer(res.data.status, res.data.cache);
+      })
+      .fail(function(xhr, status, error){
+        console.error('[CWPA] Échec optimizer_status:', xhr.status, status, xhr.responseText);
+        var msg = xhr.status === 0 ? 'Serveur injoignable (vérifiez admin-ajax.php)' :
+                  'HTTP ' + xhr.status + ' — ' + escHtml(xhr.responseText.substring(0, 150));
+        $('#cwpa-optim-grid').html('<div class="cwpa-ajax-error">⚠ Erreur AJAX : ' + msg + '</div>');
+      });
   }
 
   function renderOptimizer(status, cache){
@@ -373,16 +385,22 @@
   // WEBP
   // ══════════════════════════════════════════════════════════
   function loadWebPStats(){
-    $.post(CWPA.ajax_url, { action:'cwpa_webp_stats', nonce:CWPA.nonce }, function(res){
-      if (!res.success) {
-        $('#cwpa-webp-panel').html('<div class="cwpa-ajax-error">⚠ Erreur chargement WebP : ' + escHtml(res.data || 'réponse inattendue') + '</div>');
-        return;
-      }
-      renderWebP(res.data);
-    }).fail(function(xhr){
-      var msg = xhr.status === 0 ? 'Serveur injoignable' : 'HTTP ' + xhr.status;
-      $('#cwpa-webp-panel').html('<div class="cwpa-ajax-error">⚠ Erreur AJAX WebP : ' + msg + '</div>');
-    });
+    console.log('[CWPA] Chargement stats WebP...');
+    $.post(CWPA.ajax_url, { action:'cwpa_webp_stats', nonce:CWPA.nonce })
+      .done(function(res){
+        console.log('[CWPA] Réponse webp_stats:', res);
+        if (!res || !res.success) {
+          var err = (res && res.data) ? res.data : 'Réponse invalide (voir console)';
+          $('#cwpa-webp-panel').html('<div class="cwpa-ajax-error">⚠ Erreur WebP : ' + escHtml(String(err)) + '</div>');
+          return;
+        }
+        renderWebP(res.data);
+      })
+      .fail(function(xhr, status, error){
+        console.error('[CWPA] Échec webp_stats:', xhr.status, status, xhr.responseText);
+        var msg = xhr.status === 0 ? 'Serveur injoignable' : 'HTTP ' + xhr.status + ' — ' + escHtml(xhr.responseText.substring(0, 150));
+        $('#cwpa-webp-panel').html('<div class="cwpa-ajax-error">⚠ Erreur AJAX WebP : ' + msg + '</div>');
+      });
   }
 
   function renderWebP(s){

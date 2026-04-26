@@ -3,8 +3,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class CWPA_Cache {
 
-    const CACHE_DIR = WP_CONTENT_DIR . '/cache/cwpa-pages/';
-    const TTL       = 3600; // 1 hour
+    const TTL = 3600;
+
+    private static function cache_dir() {
+        return WP_CONTENT_DIR . '/cache/cwpa-pages/';
+    }
 
     public static function init() {
         if ( ! get_option( 'cwpa_page_cache' ) ) return;
@@ -53,12 +56,12 @@ class CWPA_Cache {
         $uri  = $_SERVER['REQUEST_URI'] ?? '/';
         $host = $_SERVER['HTTP_HOST'] ?? 'default';
         $hash = md5( $host . $uri );
-        return self::CACHE_DIR . $hash . '.html';
+        return self::cache_dir() . $hash . '.html';
     }
 
     public static function clear_all() {
-        if ( ! is_dir( self::CACHE_DIR ) ) return 0;
-        $files   = glob( self::CACHE_DIR . '*.html' ) ?: [];
+        if ( ! is_dir( self::cache_dir() ) ) return 0;
+        $files   = glob( self::cache_dir() . '*.html' ) ?: [];
         $deleted = 0;
         foreach ( $files as $f ) {
             if ( @unlink( $f ) ) $deleted++;
@@ -67,10 +70,10 @@ class CWPA_Cache {
     }
 
     public static function get_stats() {
-        if ( ! is_dir( self::CACHE_DIR ) ) {
+        if ( ! is_dir( self::cache_dir() ) ) {
             return [ 'files' => 0, 'size_kb' => 0 ];
         }
-        $files = glob( self::CACHE_DIR . '*.html' ) ?: [];
+        $files = glob( self::cache_dir() . '*.html' ) ?: [];
         $size  = array_sum( array_map( 'filesize', $files ) );
         return [
             'files'   => count( $files ),

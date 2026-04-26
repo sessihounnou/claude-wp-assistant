@@ -44,6 +44,7 @@ class CWPA_Admin {
             'api_set'        => ! empty( get_option( 'cwpa_api_key' ) ),
             'site_url'       => get_site_url(),
             'pagespeed_key'  => get_option( 'cwpa_pagespeed_key', '' ),
+            'version'        => CWPA_VERSION,
         ] );
     }
 
