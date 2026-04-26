@@ -154,9 +154,15 @@ class CWPA_Optimizer {
     }
 
     // ── Lazy Load ────────────────────────────────────────────────────────────
+    // Exclut la 1ère image (candidate LCP) — la mettre en lazy load ferait baisser le score
     public static function add_lazy_load( $content ) {
         if ( is_admin() ) return $content;
-        return preg_replace( '/<img(?![^>]*loading=)([^>]*)>/i', '<img loading="lazy"$1>', $content );
+        $count = 0;
+        return preg_replace_callback( '/<img(?![^>]*loading=)([^>]*)>/i', function ( $m ) use ( &$count ) {
+            $count++;
+            if ( $count === 1 ) return $m[0]; // skip LCP candidate
+            return '<img loading="lazy"' . $m[1] . '>';
+        }, $content );
     }
 
     // ── HTML Minify ──────────────────────────────────────────────────────────

@@ -791,9 +791,127 @@
   function escAttr(str){ return escHtml(str); }
 
   // ══════════════════════════════════════════════════════════
+  // LCP
+  // ══════════════════════════════════════════════════════════
+  $('#cwpa-lcp-toggle').on('change', function(){
+    var enabled = $(this).is(':checked');
+    $('#cwpa-lcp-settings').toggle(enabled);
+    saveLCP(enabled);
+  });
+
+  $('#cwpa-lcp-save').on('click', function(){
+    saveLCP($('#cwpa-lcp-toggle').is(':checked'));
+  });
+
+  function saveLCP(enabled) {
+    var $res = $('#cwpa-lcp-result');
+    $.post(CWPA.ajax_url, {
+      action:             'cwpa_lcp_save',
+      nonce:              CWPA.nonce,
+      enabled:            enabled ? 1 : 0,
+      manual_url:         $('#cwpa-lcp-url').val().trim(),
+      preconnect_domains: $('#cwpa-lcp-domains').val().trim()
+    }, function(res){
+      $res.text(res.success ? '✓ Enregistré' : '⚠ '+escHtml(res.data)).css('color', res.success ? 'var(--cwpa-ok)' : 'var(--cwpa-critical)');
+      setTimeout(function(){ $res.text(''); }, 3000);
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // SSH
+  // ══════════════════════════════════════════════════════════
+
+  // Auth mode switch
+  $('#cwpa-ssh-auth').on('change', function(){
+    var isKey = $(this).val() === 'key';
+    $('#cwpa-ssh-auth-password').toggle(!isKey);
+    $('#cwpa-ssh-auth-key').toggle(isKey);
+  });
+
+  // Save SSH settings
+  $('#cwpa-ssh-save').on('click', function(){
+    var $btn = $(this).prop('disabled', true).text('Enregistrement...');
+    var $res = $('#cwpa-ssh-result');
+    $.post(CWPA.ajax_url, {
+      action:   'cwpa_ssh_save',
+      nonce:    CWPA.nonce,
+      host:     $('#cwpa-ssh-host').val().trim(),
+      port:     $('#cwpa-ssh-port').val() || 22,
+      user:     $('#cwpa-ssh-user').val().trim(),
+      auth:     $('#cwpa-ssh-auth').val(),
+      password: $('#cwpa-ssh-password').val(),
+      privkey:  $('#cwpa-ssh-privkey').val()
+    }, function(res){
+      $btn.prop('disabled', false).text('Enregistrer');
+      $res.text(res.success ? '✓ Sauvegardé' : '⚠ '+escHtml(res.data))
+          .css('color', res.success ? 'var(--cwpa-ok)' : 'var(--cwpa-critical)');
+    });
+  });
+
+  // Test SSH connection
+  $('#cwpa-ssh-test').on('click', function(){
+    var $btn = $(this).prop('disabled', true).text('Connexion...');
+    var $res = $('#cwpa-ssh-result');
+    $res.text('').css('color','');
+    $.post(CWPA.ajax_url, { action:'cwpa_ssh_test', nonce:CWPA.nonce }, function(res){
+      $btn.prop('disabled', false).text('🔌 Tester la connexion');
+      if (res.success) {
+        $res.text('✓ '+res.data.message).css('color','var(--cwpa-ok)');
+        if (res.data.output) showSSHOutput('Infos serveur', res.data.output);
+      } else {
+        $res.text('✗ '+escHtml(res.data)).css('color','var(--cwpa-critical)');
+      }
+    }).fail(function(xhr){
+      $btn.prop('disabled', false).text('🔌 Tester la connexion');
+      $res.text('✗ Erreur réseau HTTP '+xhr.status).css('color','var(--cwpa-critical)');
+    });
+  });
+
+  // Render SSH action buttons
+  function renderSSHActions() {
+    if (!CWPA.ssh_actions) return;
+    var html = '';
+    $.each(CWPA.ssh_actions, function(id, a){
+      var isWrite = a.write;
+      html += '<button class="cwpa-btn cwpa-ssh-action-btn '+(isWrite?'cwpa-btn-primary':'cwpa-btn-ghost')+'" data-action="'+escAttr(id)+'">';
+      html += (isWrite ? '⚙ ' : '') + escHtml(a.label) + '</button>';
+    });
+    $('#cwpa-ssh-btn-grid').html(html);
+  }
+
+  $(document).on('click', '.cwpa-ssh-action-btn', function(){
+    var $btn      = $(this).prop('disabled', true).addClass('cwpa-btn-loading');
+    var actionId  = $btn.data('action');
+    var label     = $btn.text().trim();
+
+    $.post(CWPA.ajax_url, { action:'cwpa_ssh_action', nonce:CWPA.nonce, action_id:actionId }, function(res){
+      $btn.prop('disabled', false).removeClass('cwpa-btn-loading');
+      if (res.success) {
+        showSSHOutput(escHtml(res.data.label), res.data.output);
+      } else {
+        showSSHOutput('Erreur — '+escHtml(label), res.data);
+      }
+    }).fail(function(xhr){
+      $btn.prop('disabled', false).removeClass('cwpa-btn-loading');
+      showSSHOutput('Erreur réseau', 'HTTP '+xhr.status);
+    });
+  });
+
+  function showSSHOutput(label, output) {
+    $('#cwpa-ssh-output-label').text(label);
+    $('#cwpa-ssh-output').text(output || '(pas de sortie)');
+    $('#cwpa-ssh-output-wrap').show();
+  }
+
+  $('#cwpa-ssh-output-close').on('click', function(){
+    $('#cwpa-ssh-output-wrap').hide();
+  });
+
+  // ══════════════════════════════════════════════════════════
   // INIT — optimizer + WebP sont indépendants de l'API Claude
   // ══════════════════════════════════════════════════════════
   loadOptimizerStatus();
   loadWebPStats();
+  renderSSHActions();
 
 })(jQuery);

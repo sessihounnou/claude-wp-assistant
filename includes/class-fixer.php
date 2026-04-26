@@ -56,6 +56,10 @@ class CWPA_Fixer {
             'enable_webp_auto'          => [ $this, 'toggle_option_on',  'cwpa_webp_auto' ],
             'disable_webp_auto'         => [ $this, 'toggle_option_off', 'cwpa_webp_auto' ],
             'convert_all_webp'          => [ $this, 'convert_all_webp' ],
+
+            // ── LCP ───────────────────────────────────────────────────────────
+            'enable_lcp'                => [ $this, 'toggle_option_on',  'cwpa_lcp_enabled' ],
+            'disable_lcp'               => [ $this, 'toggle_option_off', 'cwpa_lcp_enabled' ],
         ];
     }
 
@@ -275,6 +279,7 @@ class CWPA_Fixer {
             'cwpa_remove_query_strings' => 'Query strings supprimées des ressources statiques.',
             'cwpa_dns_prefetch'         => 'DNS prefetch activé.',
             'cwpa_webp_auto'            => 'Conversion WebP automatique à l\'upload activée.',
+            'cwpa_lcp_enabled'          => 'Optimisation LCP activée (preload image, fetchpriority, preconnect).',
         ];
         return [ 'success' => true, 'message' => $labels[ $option ] ?? "Option {$option} activée." ];
     }

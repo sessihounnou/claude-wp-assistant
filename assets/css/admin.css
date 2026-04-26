@@ -299,6 +299,34 @@
 @keyframes cwpa-spin { to { transform:rotate(360deg); } }
 .cwpa-loading-inner p { color:var(--cwpa-text2); font-size:14px; margin:0; }
 
+/* ── LCP ─────────────────────────────────────────────────── */
+.cwpa-lcp-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+.cwpa-lcp-desc { flex:1; font-size:13px; color:var(--cwpa-text2); line-height:1.6; }
+.cwpa-lcp-desc strong { color:var(--cwpa-text); }
+.cwpa-lcp-desc code { background:var(--cwpa-surface2); padding:1px 5px; border-radius:4px; font-family:'DM Mono',monospace; font-size:11px; color:var(--cwpa-accent); }
+.cwpa-lcp-toggle { flex-shrink:0; margin-top:2px; }
+.cwpa-lcp-field label { font-size:12px; font-weight:600; color:var(--cwpa-text2); display:block; }
+
+/* ── SSH ─────────────────────────────────────────────────── */
+.cwpa-ssh-card { }
+.cwpa-ssh-intro { font-size:13px; color:var(--cwpa-text2); line-height:1.6; margin-bottom:20px; }
+.cwpa-ssh-intro strong { color:var(--cwpa-text); }
+.cwpa-ssh-warn { margin-top:10px; padding:10px 14px; background:rgba(255,179,71,.08); border:1px solid rgba(255,179,71,.25); border-radius:8px; color:var(--cwpa-warning); font-size:12px; font-family:'DM Mono',monospace; }
+.cwpa-ssh-warn code { background:rgba(255,179,71,.1); padding:1px 4px; border-radius:3px; }
+.cwpa-ssh-fields { display:grid; grid-template-columns:1fr 80px 1fr 1fr; gap:12px; margin-bottom:14px; }
+.cwpa-ssh-field { display:flex; flex-direction:column; gap:5px; }
+.cwpa-ssh-field label { font-size:11px; font-weight:600; color:var(--cwpa-text2); text-transform:uppercase; letter-spacing:.04em; }
+.cwpa-ssh-field input,.cwpa-ssh-field select,.cwpa-ssh-field textarea { width:100%; }
+.cwpa-ssh-field-sm input { text-align:center; }
+.cwpa-ssh-actions-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:14px; }
+.cwpa-ssh-actions-title { font-size:12px; font-weight:700; color:var(--cwpa-text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px; }
+.cwpa-ssh-btn-grid { display:flex; flex-wrap:wrap; gap:8px; }
+.cwpa-ssh-action-btn { font-size:12px; padding:7px 14px; }
+.cwpa-btn-loading { opacity:.6; cursor:wait; }
+.cwpa-ssh-output-wrap { margin-top:16px; border:1px solid var(--cwpa-border); border-radius:10px; overflow:hidden; }
+.cwpa-ssh-output-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--cwpa-surface2); border-bottom:1px solid var(--cwpa-border); font-size:12px; font-weight:600; color:var(--cwpa-text2); }
+.cwpa-ssh-output { margin:0; padding:16px; background:#0a0a0c; color:#a8ffb0; font-family:'DM Mono',monospace; font-size:12px; line-height:1.6; white-space:pre-wrap; word-break:break-all; max-height:400px; overflow-y:auto; }
+
 /* ── "Tout corriger" bar ─────────────────────────────────── */
 .cwpa-all-fixes-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 18px; margin-bottom:16px; background:rgba(212,168,83,.06); border:1px solid rgba(212,168,83,.2); border-radius:10px; }
 .cwpa-all-fixes-info { flex:1; font-size:13px; color:var(--cwpa-text2); }
@@ -327,6 +355,7 @@
   .cwpa-main { padding:16px; }
   .cwpa-ps-scores { grid-template-columns:repeat(2,1fr); }
   .cwpa-cwv-grid { grid-template-columns:repeat(2,1fr); }
+  .cwpa-ssh-fields { grid-template-columns:1fr 1fr; }
 }
 @media (max-width:600px) {
   .cwpa-scans-grid { grid-template-columns:1fr 1fr; }

@@ -23,6 +23,11 @@ class CWPA_Admin {
         add_action( 'wp_ajax_cwpa_diagnostics',       [ $this, 'ajax_diagnostics' ] );
         add_action( 'wp_ajax_cwpa_pagespeed_ai',      [ $this, 'ajax_pagespeed_ai' ] );
         add_action( 'wp_ajax_cwpa_apply_all_fixes',   [ $this, 'ajax_apply_all_fixes' ] );
+        add_action( 'wp_ajax_cwpa_ssh_save',          [ $this, 'ajax_ssh_save' ] );
+        add_action( 'wp_ajax_cwpa_ssh_test',          [ $this, 'ajax_ssh_test' ] );
+        add_action( 'wp_ajax_cwpa_ssh_action',        [ $this, 'ajax_ssh_action' ] );
+        add_action( 'wp_ajax_cwpa_lcp_save',          [ $this, 'ajax_lcp_save' ] );
+        add_action( 'wp_ajax_cwpa_lcp_status',        [ $this, 'ajax_lcp_status' ] );
     }
 
     public function register_menu() {
@@ -53,6 +58,12 @@ class CWPA_Admin {
             'site_url'       => get_site_url(),
             'pagespeed_key'  => get_option( 'cwpa_pagespeed_key', '' ),
             'version'        => CWPA_VERSION,
+            'ssh_configured' => CWPA_SSH::is_configured(),
+            'ssh2_available' => CWPA_SSH::has_ssh2(),
+            'lcp_enabled'    => (bool) get_option( 'cwpa_lcp_enabled' ),
+            'lcp_manual_url' => get_option( 'cwpa_lcp_manual_url', '' ),
+            'preconnect_domains' => implode( "\n", (array) get_option( 'cwpa_preconnect_domains', [] ) ),
+            'ssh_actions'    => array_map( fn( $a ) => [ 'label' => $a['label'], 'write' => ! empty( $a['write'] ) ], CWPA_SSH::get_actions() ),
         ] );
     }
 
@@ -379,6 +390,87 @@ class CWPA_Admin {
 
         $applied = count( array_filter( $results, fn( $r ) => $r['success'] ) );
         wp_send_json_success( [ 'results' => $results, 'applied' => $applied, 'total' => count( $fix_ids ) ] );
+    }
+
+    // ── SSH — Sauvegarde les paramètres de connexion ──────────────────────────
+    public function ajax_ssh_save() {
+        check_ajax_referer( 'cwpa_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
+
+        CWPA_SSH::save_settings( [
+            'host'     => $_POST['host']     ?? '',
+            'port'     => $_POST['port']     ?? 22,
+            'user'     => $_POST['user']     ?? '',
+            'auth'     => $_POST['auth']     ?? 'password',
+            'password' => $_POST['password'] ?? '',
+            'privkey'  => $_POST['privkey']  ?? '',
+            'pubkey'   => $_POST['pubkey']   ?? '',
+        ] );
+        wp_send_json_success( [ 'message' => 'Paramètres SSH sauvegardés.' ] );
+    }
+
+    // ── SSH — Teste la connexion ──────────────────────────────────────────────
+    public function ajax_ssh_test() {
+        check_ajax_referer( 'cwpa_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
+
+        if ( ! CWPA_SSH::has_ssh2() ) {
+            wp_send_json_error( 'Extension PHP ssh2 non disponible sur ce serveur. Demandez à votre hébergeur de l\'activer, ou installez-la via : apt install php-ssh2' );
+        }
+
+        $ssh    = new CWPA_SSH();
+        $result = $ssh->connect();
+
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( $result->get_error_message() );
+        }
+
+        $info = $ssh->run_action( 'server_info' );
+        wp_send_json_success( [ 'message' => 'Connexion SSH réussie !', 'output' => is_wp_error( $info ) ? $info->get_error_message() : $info ] );
+    }
+
+    // ── SSH — Exécute une action prédéfinie ───────────────────────────────────
+    public function ajax_ssh_action() {
+        check_ajax_referer( 'cwpa_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
+
+        $action_id = sanitize_key( $_POST['action_id'] ?? '' );
+        $actions   = CWPA_SSH::get_actions();
+
+        if ( ! isset( $actions[ $action_id ] ) ) {
+            wp_send_json_error( 'Action inconnue.' );
+        }
+
+        $ssh    = new CWPA_SSH();
+        $result = $ssh->run_action( $action_id );
+
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( $result->get_error_message() );
+        }
+
+        wp_send_json_success( [ 'output' => $result, 'label' => $actions[ $action_id ]['label'] ] );
+    }
+
+    // ── LCP — Sauvegarde les paramètres LCP ──────────────────────────────────
+    public function ajax_lcp_save() {
+        check_ajax_referer( 'cwpa_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
+
+        update_option( 'cwpa_lcp_enabled',    (int) ( $_POST['enabled'] ?? 0 ) );
+        update_option( 'cwpa_lcp_manual_url', esc_url_raw( $_POST['manual_url'] ?? '' ) );
+
+        $domains_raw = sanitize_textarea_field( $_POST['preconnect_domains'] ?? '' );
+        $domains     = array_filter( array_map( 'trim', explode( "\n", $domains_raw ) ) );
+        update_option( 'cwpa_preconnect_domains', $domains );
+
+        wp_send_json_success( [ 'message' => 'Paramètres LCP sauvegardés.' ] );
+    }
+
+    // ── LCP — Statut actuel ───────────────────────────────────────────────────
+    public function ajax_lcp_status() {
+        check_ajax_referer( 'cwpa_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
+        wp_send_json_success( CWPA_LCP::get_status() );
     }
 
     private function diag( $label, $ok, $ok_msg = '', $fail_msg = '', $force_status = '' ) {

@@ -67,6 +67,36 @@ $claude_key = get_option('cwpa_api_key','');
       </div>
     </div>
 
+    <!-- ── LCP ──────────────────────────────────────────────────────────── -->
+    <div class="cwpa-section">
+      <h2 class="cwpa-section-title">Optimisation LCP (Largest Contentful Paint)</h2>
+      <div class="cwpa-card" id="cwpa-lcp-card">
+        <div class="cwpa-lcp-header">
+          <div class="cwpa-lcp-desc">
+            <strong>Précharge l'image principale de chaque page</strong> — ajoute <code>fetchpriority="high"</code> et <code>&lt;link rel="preload"&gt;</code> dans le <code>&lt;head&gt;</code>, active <code>&lt;link rel="preconnect"&gt;</code> vers les domaines tiers, et exclut la première image du lazy-load.
+          </div>
+          <label class="cwpa-toggle cwpa-lcp-toggle">
+            <input type="checkbox" id="cwpa-lcp-toggle" <?php echo get_option('cwpa_lcp_enabled') ? 'checked' : ''; ?>>
+            <span class="cwpa-toggle-slider"></span>
+          </label>
+        </div>
+        <div class="cwpa-lcp-settings" id="cwpa-lcp-settings" style="<?php echo get_option('cwpa_lcp_enabled') ? '' : 'display:none;'; ?>margin-top:20px;border-top:1px solid var(--cwpa-border);padding-top:18px;">
+          <div class="cwpa-lcp-field">
+            <label>URL image LCP manuelle <span style="color:var(--cwpa-text2);font-size:11px;">(optionnel — laissez vide pour détection automatique)</span></label>
+            <input type="url" id="cwpa-lcp-url" placeholder="https://votresite.com/images/hero.jpg" value="<?php echo esc_attr(get_option('cwpa_lcp_manual_url','')); ?>" style="width:100%;margin-top:6px;">
+          </div>
+          <div class="cwpa-lcp-field" style="margin-top:14px;">
+            <label>Domaines preconnect <span style="color:var(--cwpa-text2);font-size:11px;">(un par ligne — fonts.googleapis.com ajouté automatiquement)</span></label>
+            <textarea id="cwpa-lcp-domains" rows="3" style="width:100%;margin-top:6px;resize:vertical;"><?php echo esc_textarea(implode("\n",(array)get_option('cwpa_preconnect_domains',[]))); ?></textarea>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:14px;">
+            <button class="cwpa-btn cwpa-btn-primary" id="cwpa-lcp-save">Enregistrer</button>
+            <span id="cwpa-lcp-result" style="font-size:12px;"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── OPTIMISATIONS ─────────────────────────────────────────────── -->
     <div class="cwpa-section">
       <h2 class="cwpa-section-title">Optimisations Performance</h2>
@@ -84,6 +114,77 @@ $claude_key = get_option('cwpa_api_key','');
         <div class="cwpa-loading-inline">
           <div class="cwpa-spinner-sm"></div> Chargement des stats...
         </div>
+      </div>
+    </div>
+
+    <!-- ── SSH ──────────────────────────────────────────────────────────── -->
+    <div class="cwpa-section">
+      <h2 class="cwpa-section-title">Accès SSH — Optimisations Serveur</h2>
+      <div class="cwpa-card cwpa-ssh-card">
+        <div class="cwpa-ssh-intro">
+          <div>
+            <strong>Connectez Claude WP Assistant à votre serveur via SSH</strong> pour aller plus loin que le .htaccess :
+            modifier la config Nginx, vider l'OPcache, recharger les services, lire les logs d'erreur en temps réel.
+          </div>
+          <?php if (!CWPA_SSH::has_ssh2()): ?>
+          <div class="cwpa-ssh-warn">⚠ Extension PHP <code>ssh2</code> non disponible. Installez-la : <code>apt install php-ssh2 && service php-fpm restart</code></div>
+          <?php endif; ?>
+        </div>
+
+        <!-- Formulaire connexion -->
+        <div class="cwpa-ssh-form" id="cwpa-ssh-form">
+          <div class="cwpa-ssh-fields">
+            <div class="cwpa-ssh-field">
+              <label>Hôte SSH</label>
+              <input type="text" id="cwpa-ssh-host" placeholder="votreserveur.com ou 192.168.1.1" value="<?php $s=CWPA_SSH::get_settings(); echo esc_attr($s['host']??''); ?>">
+            </div>
+            <div class="cwpa-ssh-field cwpa-ssh-field-sm">
+              <label>Port</label>
+              <input type="number" id="cwpa-ssh-port" value="<?php echo esc_attr($s['port']??22); ?>" min="1" max="65535">
+            </div>
+            <div class="cwpa-ssh-field">
+              <label>Utilisateur</label>
+              <input type="text" id="cwpa-ssh-user" placeholder="root ou deploy" value="<?php echo esc_attr($s['user']??''); ?>">
+            </div>
+            <div class="cwpa-ssh-field">
+              <label>Authentification</label>
+              <select id="cwpa-ssh-auth">
+                <option value="password" <?php echo ($s['auth']??'password')==='password'?'selected':''; ?>>Mot de passe</option>
+                <option value="key"      <?php echo ($s['auth']??'')==='key'?'selected':''; ?>>Clé SSH privée</option>
+              </select>
+            </div>
+          </div>
+          <div id="cwpa-ssh-auth-password" class="cwpa-ssh-field" style="<?php echo ($s['auth']??'password')==='key'?'display:none':''; ?>">
+            <label>Mot de passe SSH</label>
+            <input type="password" id="cwpa-ssh-password" placeholder="••••••••" autocomplete="new-password">
+            <span style="font-size:11px;color:var(--cwpa-text2);">Stocké chiffré (AES-256) en base de données.</span>
+          </div>
+          <div id="cwpa-ssh-auth-key" class="cwpa-ssh-field" style="<?php echo ($s['auth']??'password')!=='key'?'display:none':''; ?>">
+            <label>Clé privée SSH (PEM)</label>
+            <textarea id="cwpa-ssh-privkey" rows="5" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..." style="font-family:monospace;font-size:11px;width:100%;"></textarea>
+          </div>
+          <div class="cwpa-ssh-actions-row">
+            <button class="cwpa-btn cwpa-btn-primary" id="cwpa-ssh-save">Enregistrer</button>
+            <button class="cwpa-btn cwpa-btn-ghost" id="cwpa-ssh-test">🔌 Tester la connexion</button>
+            <span id="cwpa-ssh-result" style="font-size:12px;"></span>
+          </div>
+        </div>
+
+        <!-- Actions serveur -->
+        <div class="cwpa-ssh-actions" id="cwpa-ssh-actions" style="margin-top:24px;border-top:1px solid var(--cwpa-border);padding-top:20px;">
+          <div class="cwpa-ssh-actions-title">Actions disponibles</div>
+          <div class="cwpa-ssh-btn-grid" id="cwpa-ssh-btn-grid">
+            <!-- Rempli par JS -->
+          </div>
+          <div class="cwpa-ssh-output-wrap" id="cwpa-ssh-output-wrap" style="display:none;">
+            <div class="cwpa-ssh-output-header">
+              <span id="cwpa-ssh-output-label"></span>
+              <button class="cwpa-btn cwpa-btn-ghost cwpa-btn-sm" id="cwpa-ssh-output-close">✕ Fermer</button>
+            </div>
+            <pre class="cwpa-ssh-output" id="cwpa-ssh-output"></pre>
+          </div>
+        </div>
+
       </div>
     </div>
 
