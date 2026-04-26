@@ -351,6 +351,34 @@
 .cwpa-impact-medium { background:rgba(255,179,71,.12);  color:var(--cwpa-warning);  border:1px solid rgba(255,179,71,.25); }
 .cwpa-impact-low    { background:rgba(77,166,255,.10);  color:var(--cwpa-info);     border:1px solid rgba(77,166,255,.2); }
 
+/* ── PageSpeed Mode ──────────────────────────────────────── */
+.cwpa-ps-mode-wrap { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+@media (max-width:960px) { .cwpa-ps-mode-wrap { grid-template-columns:1fr; } }
+
+.cwpa-ps-mode-hero { border:1px solid rgba(212,168,83,.35); background:linear-gradient(135deg,rgba(212,168,83,.06) 0%,rgba(212,168,83,.02) 100%); }
+.cwpa-ps-mode-badge { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--cwpa-accent); background:rgba(212,168,83,.1); border:1px solid rgba(212,168,83,.25); border-radius:4px; padding:3px 9px; margin-bottom:12px; }
+.cwpa-ps-mode-title { font-size:18px; font-weight:700; color:var(--cwpa-text); margin:0 0 10px; }
+.cwpa-ps-mode-desc { font-size:13px; color:var(--cwpa-text2); line-height:1.55; margin:0 0 18px; }
+.cwpa-ps-mode-features { display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; margin-bottom:20px; }
+.cwpa-ps-mode-features span { font-size:12px; color:var(--cwpa-ok); }
+.cwpa-ps-mode-actions { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+.cwpa-ps-mode-btn { font-size:14px; padding:10px 22px; }
+.cwpa-ps-mode-warn { font-size:11px; color:var(--cwpa-warning); line-height:1.5; margin:0; padding:10px 14px; background:rgba(255,179,71,.06); border:1px solid rgba(255,179,71,.2); border-radius:8px; }
+
+/* Critical CSS card */
+.cwpa-critical-css-card { display:flex; flex-direction:column; gap:14px; }
+.cwpa-critical-css-header { display:flex; flex-direction:column; gap:6px; }
+.cwpa-critical-css-header strong { font-size:14px; font-weight:700; display:flex; align-items:center; gap:10px; }
+.cwpa-critical-status { font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; background:rgba(144,144,168,.1); color:var(--cwpa-text2); border:1px solid var(--cwpa-border); }
+.cwpa-critical-status.active { background:rgba(77,222,148,.1); color:var(--cwpa-ok); border-color:rgba(77,222,148,.3); }
+.cwpa-critical-css-desc { font-size:12px; color:var(--cwpa-text2); line-height:1.5; margin:0; }
+#cwpa-critical-css-input { width:100%; font-family:'DM Mono',monospace; font-size:11px; line-height:1.6; resize:vertical; min-height:180px; }
+.cwpa-critical-css-footer { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.cwpa-critical-css-tips { background:var(--cwpa-surface2); border:1px solid var(--cwpa-border); border-radius:8px; padding:14px 16px; font-size:12px; color:var(--cwpa-text2); line-height:1.6; }
+.cwpa-critical-css-tips strong { color:var(--cwpa-text); font-size:12px; display:block; margin-bottom:8px; }
+.cwpa-critical-css-tips ol { margin:0; padding-left:18px; }
+.cwpa-critical-css-tips li { margin-bottom:4px; }
+
 /* ── Image Optimization Section ─────────────────────────── */
 .cwpa-imgoptim-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; margin-bottom:28px; }
 .cwpa-imgoptim-subtitle { font-size:13px; font-weight:700; color:var(--cwpa-text2); letter-spacing:.04em; text-transform:uppercase; margin:0 0 14px; padding-top:4px; border-top:1px solid var(--cwpa-border); }

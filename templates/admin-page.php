@@ -67,6 +67,67 @@ $claude_key = get_option('cwpa_api_key','');
       </div>
     </div>
 
+    <!-- ── MODE PAGESPEED ────────────────────────────────────────────────── -->
+    <div class="cwpa-section">
+      <h2 class="cwpa-section-title">Mode PageSpeed — Score 90+</h2>
+      <div class="cwpa-ps-mode-wrap">
+
+        <!-- Hero card -->
+        <div class="cwpa-card cwpa-ps-mode-hero">
+          <div class="cwpa-ps-mode-badge">⚡ Optimisation maximale</div>
+          <h3 class="cwpa-ps-mode-title">Activer le Mode PageSpeed</h3>
+          <p class="cwpa-ps-mode-desc">Active en un clic les optimisations les plus efficaces pour passer Google PageSpeed. CSS et JS non-bloquants, supression du CSS WordPress inutile, GZIP, cache, lazy load, LCP et plus.</p>
+          <div class="cwpa-ps-mode-features">
+            <span>✓ CSS asynchrone (supprime render-blocking)</span>
+            <span>✓ CSS WordPress inutile retiré (~70 Ko)</span>
+            <span>✓ jQuery Migrate désactivé (-10 Ko)</span>
+            <span>✓ JS différé (defer)</span>
+            <span>✓ HTML + CSS minifiés</span>
+            <span>✓ Bloat WordPress retiré du &lt;head&gt;</span>
+            <span>✓ GZIP + Cache navigateur</span>
+            <span>✓ LCP + DNS prefetch + font-display swap</span>
+          </div>
+          <div class="cwpa-ps-mode-actions">
+            <button class="cwpa-btn cwpa-btn-primary cwpa-ps-mode-btn" id="cwpa-activate-ps-mode">⚡ Tout activer maintenant</button>
+            <span id="cwpa-ps-mode-result" style="font-size:12px;"></span>
+          </div>
+          <p class="cwpa-ps-mode-warn">⚠ Le CSS asynchrone peut provoquer un flash de contenu non stylisé (FOUC) si vous n'avez pas de CSS critique ci-dessous. Testez après activation.</p>
+        </div>
+
+        <!-- Critical CSS card -->
+        <div class="cwpa-card cwpa-critical-css-card">
+          <div class="cwpa-critical-css-header">
+            <div>
+              <strong>CSS Critique (above-the-fold)</strong>
+              <span class="cwpa-critical-status <?php echo get_option('cwpa_critical_css') ? 'active' : ''; ?>" id="cwpa-critical-status">
+                <?php echo get_option('cwpa_critical_css') ? '● Actif' : '○ Inactif'; ?>
+              </span>
+            </div>
+            <p class="cwpa-critical-css-desc">Le CSS critique est inliné dans le <code>&lt;head&gt;</code> — le premier rendu est instantané même si le CSS principal se charge de façon asynchrone.</p>
+          </div>
+          <textarea id="cwpa-critical-css-input" rows="10" placeholder="/* Collez ici votre CSS critique (above-the-fold) */
+/* Exemple : header, hero, navigation, fonts... */
+body { margin:0; font-family:sans-serif; }
+header { background:#fff; padding:20px; }
+.hero { min-height:60vh; }"><?php echo esc_textarea(get_option('cwpa_critical_css_content','')); ?></textarea>
+          <div class="cwpa-critical-css-footer">
+            <button class="cwpa-btn cwpa-btn-primary" id="cwpa-save-critical-css">Sauvegarder &amp; Activer</button>
+            <button class="cwpa-btn cwpa-btn-ghost" id="cwpa-clear-critical-css">Effacer</button>
+            <span id="cwpa-critical-css-result" style="font-size:12px;"></span>
+          </div>
+          <div class="cwpa-critical-css-tips">
+            <strong>Comment obtenir votre CSS critique :</strong>
+            <ol>
+              <li>Chrome DevTools → Coverage (Ctrl+Shift+P → "Show Coverage") → rechargez la page → le CSS utilisé au premier rendu apparaît</li>
+              <li>Outil en ligne : <a href="https://www.corewebvitals.io/tools/critical-css-generator" target="_blank">corewebvitals.io/tools/critical-css-generator</a></li>
+              <li>Copiez uniquement le CSS de votre header, hero et navigation</li>
+            </ol>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- ── LCP ──────────────────────────────────────────────────────────── -->
     <div class="cwpa-section">
       <h2 class="cwpa-section-title">Optimisation LCP (Largest Contentful Paint)</h2>

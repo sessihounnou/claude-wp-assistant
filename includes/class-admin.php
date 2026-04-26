@@ -28,6 +28,8 @@ class CWPA_Admin {
         add_action( 'wp_ajax_cwpa_ssh_action',        [ $this, 'ajax_ssh_action' ] );
         add_action( 'wp_ajax_cwpa_lcp_save',          [ $this, 'ajax_lcp_save' ] );
         add_action( 'wp_ajax_cwpa_lcp_status',        [ $this, 'ajax_lcp_status' ] );
+        add_action( 'wp_ajax_cwpa_pagespeed_mode',    [ $this, 'ajax_pagespeed_mode' ] );
+        add_action( 'wp_ajax_cwpa_save_critical_css', [ $this, 'ajax_save_critical_css' ] );
     }
 
     public function register_menu() {
@@ -471,6 +473,60 @@ class CWPA_Admin {
         check_ajax_referer( 'cwpa_nonce', 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
         wp_send_json_success( CWPA_LCP::get_status() );
+    }
+
+    // ── Mode PageSpeed — active toutes les optimisations d'un coup ────────────
+    public function ajax_pagespeed_mode() {
+        check_ajax_referer( 'cwpa_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
+
+        $mode_fixes = [
+            'defer_js',
+            'enable_lazy_load',
+            'enable_html_minify',
+            'enable_css_minify',
+            'enable_remove_wp_bloat',
+            'disable_jquery_migrate',
+            'enable_font_display_swap',
+            'enable_dns_prefetch',
+            'enable_async_css',
+            'enable_remove_unused_wp_css',
+            'enable_lcp',
+            'enable_preload_key_assets',
+            'enable_gzip',
+            'enable_browser_cache',
+            'enable_page_cache',
+        ];
+
+        $fixer   = new CWPA_Fixer();
+        $results = [];
+        $applied = 0;
+        foreach ( $mode_fixes as $fix_id ) {
+            $r = $fixer->apply_fix( $fix_id );
+            $results[] = array_merge( [ 'fix_id' => $fix_id ], $r );
+            if ( $r['success'] ) $applied++;
+        }
+
+        wp_send_json_success( [
+            'applied' => $applied,
+            'total'   => count( $mode_fixes ),
+            'results' => $results,
+        ] );
+    }
+
+    // ── CSS Critique — sauvegarde le CSS à inliner ────────────────────────────
+    public function ajax_save_critical_css() {
+        check_ajax_referer( 'cwpa_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Non autorisé' );
+
+        $css = isset( $_POST['css'] ) ? wp_strip_all_tags( wp_unslash( $_POST['css'] ) ) : '';
+        update_option( 'cwpa_critical_css_content', $css );
+        update_option( 'cwpa_critical_css', ! empty( $css ) ? 1 : 0 );
+
+        wp_send_json_success( [
+            'message' => ! empty( $css ) ? 'CSS critique sauvegardé et activé (' . strlen( $css ) . ' caractères).' : 'CSS critique effacé et désactivé.',
+            'enabled' => ! empty( $css ),
+        ] );
     }
 
     private function diag( $label, $ok, $ok_msg = '', $fail_msg = '', $force_status = '' ) {

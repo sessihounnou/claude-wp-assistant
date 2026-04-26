@@ -463,7 +463,9 @@
     { id:'dns_prefetch',         label:'DNS Prefetch',           desc:'Préconnecte aux domaines tiers (fonts, CDN)',     on:'enable_dns_prefetch',   off:'disable_dns_prefetch',  icon:'📡' },
     { id:'webp_serving',            label:'Servir WebP (.htaccess)',   desc:'Redirige auto vers .webp si disponible',                on:'enable_webp_serving',         off:'disable_webp_serving',        icon:'🌅' },
     { id:'webp_auto',               label:'Auto-convert WebP',         desc:'Convertit les nouvelles images à l\'upload',            on:'enable_webp_auto',            off:'disable_webp_auto',           icon:'⚙️' },
-    { id:'css_minify',              label:'Minification CSS',          desc:'Compresse les blocs <style> inline — supprime commentaires et espaces superflus',       on:'enable_css_minify',           off:'disable_css_minify',          icon:'🎨' },
+    { id:'css_minify',              label:'Minification CSS',          desc:'Compresse les blocs <style> inline — supprime commentaires et espaces superflus',                on:'enable_css_minify',            off:'disable_css_minify',           icon:'🎨' },
+    { id:'async_css',               label:'CSS asynchrone (PageSpeed)', desc:'Charge toutes les CSS en non-bloquant — élimine "Eliminate render-blocking resources"',          on:'enable_async_css',             off:'disable_async_css',            icon:'🚀' },
+    { id:'remove_unused_wp_css',    label:'Supprimer CSS WP inutile',  desc:'Retire wp-block-library, global-styles, classic-theme-styles (~70 Ko). Tester après activation', on:'enable_remove_unused_wp_css',  off:'disable_remove_unused_wp_css', icon:'🗑' },
     // ── 4G / Mobile ──────────────────────────────────────────────────────────
     { id:'font_display_swap',       label:'Font-display swap',         desc:'Ajoute display=swap aux Google Fonts — évite le FOIT',  on:'enable_font_display_swap',    off:'disable_font_display_swap',   icon:'🔤' },
     { id:'remove_wp_bloat',         label:'Supprimer le bloat WP',     desc:'Retire generator, rsd_link, wlwmanifest du <head>',     on:'enable_remove_wp_bloat',      off:'disable_remove_wp_bloat',     icon:'🧹' },
@@ -913,6 +915,57 @@
 
   $('#cwpa-ssh-output-close').on('click', function(){
     $('#cwpa-ssh-output-wrap').hide();
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // PAGESPEED MODE
+  // ══════════════════════════════════════════════════════════
+  $('#cwpa-activate-ps-mode').on('click', function(){
+    var $btn = $(this).prop('disabled', true).text('Activation en cours…');
+    var $res = $('#cwpa-ps-mode-result');
+    $res.text('').removeClass('error success');
+
+    $.post(CWPA.ajax_url, { action:'cwpa_pagespeed_mode', nonce:CWPA.nonce }, function(res){
+      $btn.prop('disabled', false).text('⚡ Tout activer maintenant');
+      if (res.success) {
+        var d = res.data;
+        $res.text('✓ '+d.applied+' optimisations activées sur '+d.total).css('color','var(--cwpa-ok)');
+        setTimeout(loadOptimizerStatus, 400);
+        setTimeout(loadImageOptimSection, 400);
+      } else {
+        $res.text('⚠ '+escHtml(String(res.data))).css('color','var(--cwpa-critical)');
+      }
+    }).fail(function(xhr){
+      $btn.prop('disabled', false).text('⚡ Tout activer maintenant');
+      $res.text('⚠ Erreur réseau HTTP '+xhr.status).css('color','var(--cwpa-critical)');
+    });
+  });
+
+  // Critical CSS — save
+  $('#cwpa-save-critical-css').on('click', function(){
+    var $btn = $(this).prop('disabled', true).text('Sauvegarde…');
+    var $res = $('#cwpa-critical-css-result');
+    var css  = $('#cwpa-critical-css-input').val().trim();
+
+    $.post(CWPA.ajax_url, { action:'cwpa_save_critical_css', nonce:CWPA.nonce, css:css }, function(res){
+      $btn.prop('disabled', false).text('Sauvegarder & Activer');
+      if (res.success) {
+        $res.text('✓ '+res.data.message).css('color','var(--cwpa-ok)');
+        $('#cwpa-critical-status')
+          .text(res.data.enabled ? '● Actif' : '○ Inactif')
+          .toggleClass('active', res.data.enabled);
+        setTimeout(function(){ $res.text(''); }, 4000);
+      } else {
+        $res.text('⚠ '+escHtml(String(res.data))).css('color','var(--cwpa-critical)');
+      }
+    }).fail(function(){ $btn.prop('disabled', false).text('Sauvegarder & Activer'); });
+  });
+
+  // Critical CSS — clear
+  $('#cwpa-clear-critical-css').on('click', function(){
+    if (!confirm('Effacer le CSS critique et désactiver l\'inline ?')) return;
+    $('#cwpa-critical-css-input').val('');
+    $('#cwpa-save-critical-css').trigger('click');
   });
 
   // ══════════════════════════════════════════════════════════

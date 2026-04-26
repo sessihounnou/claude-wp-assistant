@@ -15,6 +15,8 @@ class CWPA_Optimizer {
         'disable_jquery_migrate'  => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php' ],
         'font_display_swap'       => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php' ],
         'css_minify'              => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php' ],
+        'async_css'               => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php', 'litespeed-cache/litespeed-cache.php' ],
+        'remove_unused_wp_css'    => [ 'wp-rocket/wp-rocket.php', 'autoptimize/autoptimize.php' ],
     ];
 
     public static function has_conflict( $feature ) {
@@ -83,6 +85,21 @@ class CWPA_Optimizer {
         // ── CSS minify (inline <style> blocks) ───────────────────────────────
         if ( get_option( 'cwpa_css_minify' ) && ! is_admin() && ! self::has_conflict( 'html_minify' ) ) {
             add_action( 'template_redirect', [ __CLASS__, 'start_css_minify' ], 998 );
+        }
+
+        // ── CSS critique inline (premier rendu instantané) ────────────────────
+        if ( get_option( 'cwpa_critical_css' ) && get_option( 'cwpa_critical_css_content' ) ) {
+            add_action( 'wp_head', [ __CLASS__, 'inline_critical_css' ], 1 );
+        }
+
+        // ── Async CSS (élimine render-blocking resources) ─────────────────────
+        if ( get_option( 'cwpa_async_css' ) && ! is_admin() && ! self::has_conflict( 'async_css' ) ) {
+            add_filter( 'style_loader_tag', [ __CLASS__, 'async_css_tag' ], 10, 4 );
+        }
+
+        // ── Supprimer CSS WordPress inutile ───────────────────────────────────
+        if ( get_option( 'cwpa_remove_unused_wp_css' ) ) {
+            self::setup_remove_unused_wp_css();
         }
 
         // ── Image upload optimizations ───────────────────────────────────────
@@ -237,6 +254,52 @@ class CWPA_Optimizer {
         foreach ( $domains as $d ) {
             echo '<link rel="dns-prefetch" href="//' . esc_attr( ltrim( trim( $d ), '/' ) ) . '">' . "\n";
         }
+    }
+
+    // ── CSS critique inline ──────────────────────────────────────────────────
+    public static function inline_critical_css() {
+        $css = get_option( 'cwpa_critical_css_content', '' );
+        if ( ! $css ) return;
+        echo '<style id="cwpa-critical">' . wp_strip_all_tags( $css ) . '</style>' . "\n";
+    }
+
+    // ── Async CSS — élimine le render-blocking CSS ───────────────────────────
+    // Transforme chaque <link rel="stylesheet"> en preload non-bloquant
+    public static function async_css_tag( $tag, $handle, $href, $media ) {
+        if ( is_admin() || is_feed() ) return $tag;
+
+        // Handles à ne jamais async (CSS admin, login, notre propre CSS)
+        static $excluded = [ 'login', 'dashicons', 'admin-bar', 'cwpa-style', 'wp-admin' ];
+        if ( in_array( $handle, $excluded, true ) ) return $tag;
+
+        // Déjà preload ou commentaire conditionnel IE
+        if ( strpos( $tag, 'rel="preload"' ) !== false
+          || strpos( $tag, "rel='preload'" ) !== false
+          || strpos( $tag, '<!--[if' ) !== false ) {
+            return $tag;
+        }
+
+        $href_esc = esc_url( $href );
+        return '<link rel="preload" href="' . $href_esc . '" as="style" onload="this.onload=null;this.rel=\'stylesheet\'">' . "\n"
+             . '<noscript>' . $tag . '</noscript>' . "\n";
+    }
+
+    // ── Supprimer CSS WordPress inutile ─────────────────────────────────────
+    // Retire les feuilles de style Gutenberg/blocs que la plupart des thèmes classiques n'utilisent pas
+    private static function setup_remove_unused_wp_css() {
+        add_action( 'wp_enqueue_scripts', function() {
+            if ( is_admin() ) return;
+            $to_remove = [
+                'wp-block-library',        // CSS des blocs Gutenberg (~40 KB)
+                'wp-block-library-theme',  // Styles thème blocs
+                'classic-theme-styles',    // Backcompat CSS pour thèmes classiques (WP 6.1+)
+                'global-styles',           // CSS généré par theme.json (WP 5.9+)
+                'core-block-supports',     // Support CSS blocs core
+            ];
+            foreach ( $to_remove as $handle ) {
+                wp_dequeue_style( $handle );
+            }
+        }, 100 );
     }
 
     // ── CSS minify (inline <style> blocks via output buffer) ─────────────────
@@ -405,7 +468,7 @@ class CWPA_Optimizer {
 
     // ── Status ───────────────────────────────────────────────────────────────
     public static function get_status() {
-        $features_with_conflict = [ 'gzip', 'browser_cache', 'defer_js', 'lazy_load', 'html_minify', 'remove_query_strings', 'page_cache', 'disable_jquery_migrate', 'font_display_swap', 'css_minify' ];
+        $features_with_conflict = [ 'gzip', 'browser_cache', 'defer_js', 'lazy_load', 'html_minify', 'remove_query_strings', 'page_cache', 'disable_jquery_migrate', 'font_display_swap', 'css_minify', 'async_css', 'remove_unused_wp_css' ];
         $conflicts = [];
         foreach ( $features_with_conflict as $f ) {
             $name = self::get_conflict_name( $f );
@@ -440,6 +503,10 @@ class CWPA_Optimizer {
             'preload_key_assets'      => (bool) get_option( 'cwpa_preload_key_assets' ),
             'save_data'               => (bool) get_option( 'cwpa_save_data' ),
             'css_minify'              => (bool) get_option( 'cwpa_css_minify' ),
+            'async_css'               => (bool) get_option( 'cwpa_async_css' ),
+            'remove_unused_wp_css'    => (bool) get_option( 'cwpa_remove_unused_wp_css' ),
+            'critical_css'            => (bool) get_option( 'cwpa_critical_css' ),
+            'critical_css_content'    => (bool) get_option( 'cwpa_critical_css_content' ),
             // Image optimizations
             'jpeg_quality'            => (bool) get_option( 'cwpa_jpeg_quality' ),
             'jpeg_quality_value'      => (int) get_option( 'cwpa_jpeg_quality_value', 80 ),

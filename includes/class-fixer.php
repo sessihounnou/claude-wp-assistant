@@ -65,6 +65,14 @@ class CWPA_Fixer {
             'enable_css_minify'             => [ $this, 'toggle_option_on',  'cwpa_css_minify' ],
             'disable_css_minify'            => [ $this, 'toggle_option_off', 'cwpa_css_minify' ],
 
+            // ── PageSpeed / Render-blocking ────────────────────────────────────
+            'enable_async_css'              => [ $this, 'toggle_option_on',  'cwpa_async_css' ],
+            'disable_async_css'             => [ $this, 'toggle_option_off', 'cwpa_async_css' ],
+            'enable_remove_unused_wp_css'   => [ $this, 'toggle_option_on',  'cwpa_remove_unused_wp_css' ],
+            'disable_remove_unused_wp_css'  => [ $this, 'toggle_option_off', 'cwpa_remove_unused_wp_css' ],
+            'enable_critical_css'           => [ $this, 'toggle_option_on',  'cwpa_critical_css' ],
+            'disable_critical_css'          => [ $this, 'toggle_option_off', 'cwpa_critical_css' ],
+
             // ── Image optimizations ────────────────────────────────────────────
             'enable_jpeg_quality'           => [ $this, 'toggle_option_on',  'cwpa_jpeg_quality' ],
             'disable_jpeg_quality'          => [ $this, 'toggle_option_off', 'cwpa_jpeg_quality' ],
@@ -307,6 +315,9 @@ class CWPA_Fixer {
             'cwpa_webp_auto'            => 'Conversion WebP automatique à l\'upload activée.',
             'cwpa_lcp_enabled'               => 'Optimisation LCP activée (preload image, fetchpriority, preconnect).',
             'cwpa_css_minify'                => 'Minification CSS activée — les blocs <style> du HTML sont compressés.',
+            'cwpa_async_css'                 => 'CSS asynchrone activé — plus aucune feuille de style ne bloque le rendu.',
+            'cwpa_remove_unused_wp_css'      => 'CSS WordPress inutile supprimé (wp-block-library, global-styles, classic-theme-styles).',
+            'cwpa_critical_css'              => 'CSS critique inline activé — premier rendu instantané.',
             'cwpa_jpeg_quality'              => 'Qualité JPEG réduite à 80% pour les nouvelles images uploadées.',
             'cwpa_strip_exif'                => 'Suppression des métadonnées EXIF activée pour les nouveaux uploads.',
             'cwpa_limit_img_size'            => 'Limitation de la taille des images activée (max 2048px).',
